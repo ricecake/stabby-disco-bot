@@ -1,0 +1,371 @@
+# Neutral / baseline ######################################
+1 MAdv
+1 MAdv Adv
+1 MADJ
+.5 MADJ ADJ
+
+1 VP     MAdv V
+1 VP     MAdv VD
+1 VP     MAdv V NP
+1 VP     MAdv VDET P NP 
+.1 VP    MAdv VP PP
+1 VDET   MAdv VD P NP
+1  NP    Det MADJ N
+.1 NP    NP PP
+1  PP    P NP
+
+# Bad ######################################
+1 BMAdv
+1 BMAdv BAdv
+1 BMADJ
+.5 BMADJ BADJ
+
+1  BVP    BV PN
+1  BVP    BV PN BPP
+
+1  BVP    BMAdv BV
+1  BVP    BMAdv BVD
+1  BVP    BMAdv BV BNP
+1  BVP    BMAdv BVDET P BNP 
+.1 BVP    BMAdv BVP BPP
+1  BVDET  BMAdv BVD P BNP
+1  BNP    Det BMADJ BN
+.1 BNP    BNP BPP
+1  BPP    P BNP
+
+# Good ######################################
+1 GMAdv
+1 GMAdv MGAdv
+1 GMADJ
+.5 GMADJ MGADJ
+
+1 MGAdv GAdv
+1 MGAdv Adv
+1 MGADJ GADJ
+1 MGADJ ADJ
+
+1  GVP    GMAdv GV
+1  GVP    GMAdv GVD
+1  GVP    GMAdv GV GNP
+1  GVP    GMAdv GVDET P GNP 
+.1 GVP    GMAdv GVP GPP
+1  GVDET  GMAdv GVD P GNP
+1  GNP    Det GMADJ GN
+.1 GNP    GNP GPP
+1  GPP    P GNP
+
+#### Neutral words ######################################
+1 NICE MacKenzie Scott
+1 NICE Brian Acton
+
+1 V carrying
+1 V chasing 
+1 V drinking
+1 V eating
+
+1 VD clapping
+1 VD laughing
+1 VD laying
+1 VD posing
+1 VD running
+1 VD sitting
+1 VD sneezing
+1 VD standing
+1 VD walking
+
+1 N chicken
+1 N duck
+1 N squirrel
+1 N potato
+1 N lobster
+1 N window
+1 N guppy
+1 N goldfish
+1 N trout
+1 N Mushroom
+
+1 ADJ blue
+1 ADJ red 
+1 ADJ cyberpunk
+1 ADJ broken
+1 ADJ disco
+1 ADJ atomic
+1 ADJ punk
+1 ADJ colorful
+1 ADJ yellow
+1 ADJ green
+1 ADJ orange
+
+1 Adv calmly 
+1 Adv carefully 
+1 Adv carelessly 
+1 Adv cautiously 
+1 Adv certainly
+1 Adv cheerfully 
+1 Adv clearly 
+
+#### Bad words ######################################
+1 JERK Bernard Arnault
+1 JERK Elon Musk
+1 JERK Jeff Bezos
+1 JERK Mark Zuckerberg
+1 JERK Larry Ellison
+1 JERK Warren Buffet
+1 JERK Bill Gates
+1 JERK Steve Ballmer
+1 JERK Larry Page
+1 JERK Michael Bloomberg
+1 JERK Alice Walton
+1 JERK Charles Koch
+
+1 BV burning
+1 BV flailing
+1 BV gnashing
+1 BV tearing
+
+1 BVD burning
+1 BVD coughing
+1 BVD crying
+1 BVD falling
+1 BVD slipping
+1 BVD stumbling
+1 BVD tripping
+1 BVD being tormented
+
+1 BN brick
+1 BN rake
+1 BN nail
+1 BN spike
+1 BN caltrop
+1 BN splinter
+1 BN fire
+1 BN sun
+1 BN black hole
+1 BN supernova
+1 BN banana peel
+1 BN Juicero
+1 BN cybertruck
+1 BN shag carpet
+
+1 BADJ abysal
+1 BADJ awful
+1 BADJ bad
+1 BADJ blistering
+1 BADJ boring
+1 BADJ dark
+1 BADJ eldritch
+1 BADJ gross
+1 BADJ horrifying
+1 BADJ hot
+1 BADJ incandescent
+1 BADJ painful
+1 BADJ pointy
+1 BADJ rusty
+1 BADJ scalding
+1 BADJ scary
+1 BADJ scorching
+1 BADJ sharp
+1 BADJ smelly
+1 BADJ stinky
+1 BADJ terrible
+1 BADJ colorless
+
+1 BAdv terribly
+1 BAdv tragicaly
+1 BAdv grossly
+1 BAdv painfully
+1 BAdv sadly
+1 BAdv awkwardly
+1 BAdv despondantly
+1 BAdv begrudgingly
+
+#### Good words ######################################
+1 GOOD Moxie Marlinspike
+1 GOOD Bruce Schneier
+1 GOOD Jimmy Carter
+1 GOOD Barack Obama
+1 GOOD Jonas Salk
+1 GOOD Edward Jenner
+1 GOOD Carl Sagan
+1 GOOD Alexander Fleming
+1 GOOD Norman Borlaug
+1 GOOD Greta Thunberg
+1 GOOD Hedy Lamarr
+1 GOOD Ada Lovelace
+1 GOOD Grace Hopper
+1 GOOD Opossums
+
+1 GV enjoying
+1 GV cherishing
+1 GV loving
+1 GV celebrating
+1 GV praising
+1 GV worshipping
+1 GV summoning
+
+1 GVD being praised
+1 GVD celebrating
+1 GVD chillaxing
+1 GVD laughing
+1 GVD partying
+1 GVD peacefully sleeping
+1 GVD relaxing
+1 GVD relaxing 
+1 GVD serenely ascending
+1 GVD swooning
+
+1 GN flower
+1 GN cake
+1 GN pie
+1 GN donut
+1 GN puppy
+1 GN kitten
+1 GN cat
+1 GN floof
+1 GN cozy bed
+1 GN beautiful bed
+1 GN meadow
+1 GN pillow
+1 GN zoo
+
+1 GADJ awesome
+1 GADJ colorful
+1 GADJ comfortable
+1 GADJ cool
+1 GADJ cozy
+1 GADJ excellent
+1 GADJ fluffy
+1 GADJ good
+1 GADJ great 
+1 GADJ happy
+1 GADJ joyous
+1 GADJ peaceful
+1 GADJ perfect
+1 GADJ sleepy
+1 GADJ stellar
+1 GADJ tasty
+1 GADJ warm
+
+1 GAdv briskly
+1 GAdv cheerfully
+1 GAdv chipperly
+1 GAdv colorfully
+1 GAdv coolly
+1 GAdv expertly
+1 GAdv gladly
+1 GAdv gleefully
+1 GAdv happily
+1 GAdv joyfully
+1 GAdv masterfully
+1 GAdv peacefully
+1 GAdv perfectly
+1 GAdv professionally
+1 GAdv sleepily
+1 GAdv stunningly
+1 GAdv wizardly
+1 GAdv zestfully
+1 GAdv zestily
+
+############### Common stuff ######################################
+1 ROOT PRO
+1 ROOT PRO , MODS
+
+1   PRO JERK , BADSEN 
+.25 PRO NICE , NEUTRALSEN
+.1  PRO GOOD , GOODSEN
+
+1 MODS by Artist
+1 MODS Style style
+
+
+1 BADSEN BVP
+1 NEUTRALSEN VP
+1 GOODSEN GVP
+
+
+1 Det a
+1 Det one
+1 Det the
+
+1 PN themself
+
+1 P on 
+1 P in
+1 P above
+1 P behind
+1 P below
+1 P beneath
+1 P by
+1 P inside
+1 P over
+1 P toward
+1 P towards
+1 P under
+1 P underneath
+1 P upon
+1 P with
+1 P within
+1 P without
+
+1 Style cyberpunk
+1 Style art nouveau
+1 Style fart nouveau
+2 Style fart deco
+1 Style art deco
+1 Style dadist
+1 Style punk
+1 Style grunge
+1 Style 80's
+1 Style pop art
+1 Style 50's
+1 Style 20's
+1 Style tudor
+1 Style victorian
+1 Style elizabethan 
+1 Style disco
+1 Style hipster
+1 Style goth
+1 Style mall goth
+1 Style gothic
+1 Style raver
+1 Style atom punk
+1 Style childrens book
+1 Style watercolor
+1 Style fresco
+1 Style comic book
+1 Style cel-shaded
+1 Style cel-shaded comic book
+1 Style 2d
+1 Style caricature
+1 Style photograph
+1 Style render
+1 Style smoke
+1 Style fractal
+1 Style puppet
+1 Style delicate
+1 Style intricate
+1 Style Neon
+1 Style vaporwave
+1 Style realism
+1 Style pinup
+1 Style medieval manuscript
+1 Style cubism
+
+1 Artist rembrandt
+1 Artist monet
+1 Artist van gogh
+1 Artist matisse
+1 Artist picasso
+1 Artist salvador dali
+1 Artist andy warhol
+1 Artist cezanne
+1 Artist magritte
+1 Artist vermeer
+1 Artist escher
+1 Artist michelangelo
+1 Artist hieronymus bosch
+1 Artist yoshitaka amano
+1 Artist hr Geiger
+1 Artist Caravaggio 
+1 Artist Modigliani 
+1 Artist frida Kahlo 

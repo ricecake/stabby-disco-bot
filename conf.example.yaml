@@ -1,0 +1,9 @@
+---
+invite_url: INVITE URL
+token: YOUR BOT TOKEN
+karma_grammar: karma_grammar.txt
+title_font: droid-sans-mono.ttf
+artist_font: droid-sans-mono.ttf
+sd_host: http://127.0.0.1:7860
+guilds:
+  - 0 # your guild/server id goes here
