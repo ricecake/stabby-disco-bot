@@ -17,6 +17,7 @@ class Config(pydantic.BaseModel):
     invite_url: str
     token: str
     karma_grammar: str
+    prompt_grammar: str
     title_font: str = pydantic.Field(default='droid-sans-mono.ttf')
     artist_font: str = pydantic.Field(default='droid-sans-mono.ttf')
     sd_host: str = pydantic.Field(default='http://127.0.0.1:7860')
@@ -144,6 +145,8 @@ async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int
         key: value for key, value in payload.items() if value is not None
     }
 
+    print("Generating: {}".format(prettify_params(**payload)))
+
     async with session.post(url=f'{url}/sdapi/v1/txt2img', json=filtered_payload) as response:
         r = await response.json()
 
@@ -217,10 +220,28 @@ class Grammar():
     def generate(self) -> str:
         sentence = []
         self._sentence_generator('ROOT', sentence)
-        return ' '.join(sentence)
+        text = ' '.join(sentence)
+        text = re.sub(r'[ ]+', ' ', text)
+        text = re.sub(r'([\[({])\s+', r'\1', text)
+        text = re.sub(r'\s+([\])},])', r'\1', text)
+        return text
+
+
+def prettify_params(**kwargs) -> str:
+    filtered_kwargs = [
+        (key, value) for key, value in sorted(kwargs.items()) if value is not None
+    ]
+
+    display = []
+    for key, value in filtered_kwargs:
+        display_key = key.replace('_', ' ').capitalize()
+        display.append('{}: {}'.format(display_key, value))
+
+    return ', '.join(display)
 
 
 karma_grammar = Grammar(config.karma_grammar)
+prompt_grammar = Grammar(config.prompt_grammar)
 
 class MyClient(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -232,6 +253,21 @@ class MyClient(discord.Client):
             guild = discord.Object(id=guild_id)
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
+
+
+async def generation_interaction(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True) -> None:
+    await interaction.response.defer(thinking=True)
+    try:
+        file = await generate_ai_image(prompt=prompt, negative_prompt=negative, overlay=overlay)
+        await interaction.followup.send(file=file, silent=True)
+    except Exception as ex:
+        print(ex)
+        display = prettify_params(
+            prompt=prompt,
+            negative=negative,
+            overlay=overlay,
+        )
+        await interaction.followup.send("Generation is offline right now, but I would have given you: {}".format(display))
 
 
 intents = discord.Intents.default()
@@ -257,22 +293,24 @@ async def on_disconnect():
     print("Handling disconnect")
     await session.close()
 
+@client.tree.command()
+async def inspire(interaction: discord.Interaction):
+    """Some old fashioned AI inspiration"""
+    inspiration = prompt_grammar.generate()
+    await interaction.response.send_message(content=f"Consider {inspiration}.  Maybe that will bring you what you need.", silent=True)
 
 @client.tree.command()
 async def bezos(interaction: discord.Interaction):
     """Right into the sun with ya'"""
-    await interaction.response.defer(thinking=True)
-    file = await generate_ai_image(prompt="Jeff bezos on fire, falling into the sun, space flight, giant catapult,  fear, man engulfed in flames", negative_prompt="happy, excited, joy, cool, stoic, strong")
-    await interaction.followup.send(file=file, silent=True)
+    await generation_interaction(interaction, prompt="Jeff bezos on fire, falling into the sun, space flight, giant catapult,  fear, man engulfed in flames", negative_prompt="happy, excited, joy, cool, stoic, strong", overlay=False)
+
 
 @client.tree.command(name="karma-wheel")
 async def karma_wheel(interaction: discord.Interaction):
     """Spin the wheel, see what they get"""
-    await interaction.response.defer(thinking=True)
     prompt = karma_grammar.generate()
 
-    file = await generate_ai_image(prompt=prompt)
-    await interaction.followup.send(file=file, silent=True)
+    await generation_interaction(interaction, prompt=prompt)
 
 
 @client.tree.command()
@@ -283,20 +321,16 @@ async def karma_wheel(interaction: discord.Interaction):
 )
 async def generate(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True):
     """Generates an image"""
-    await interaction.response.defer(thinking=True)
-    file = await generate_ai_image(prompt=prompt, negative_prompt=negative, overlay=overlay)
-    await interaction.followup.send(file=file, silent=True)
+    await generation_interaction(interaction, prompt=prompt, negative=negative, overlay=overlay)
 
 
 # This context menu command only works on messages
 @client.tree.context_menu(name='AI-ify this bad boy')
 async def ai_message_content(interaction: discord.Interaction, message: discord.Message):
-    await interaction.response.defer(thinking=True)
     prompt = message.clean_content
     negative = "boring"
 
-    file = await generate_ai_image(prompt=prompt, negative_prompt=negative)
-    await interaction.followup.send(file=file, silent=True)
+    await generation_interaction(interaction, prompt=prompt, negative=negative)
 
 
 client.run(config.token)
