@@ -214,18 +214,21 @@
 1 GVD serenely ascending
 1 GVD swooning
 
-1 GN flower
-1 GN cake
-1 GN pie
-1 GN donut
-1 GN puppy
-1 GN kitten
-1 GN cat
-1 GN floof
-1 GN cozy bed
 1 GN beautiful bed
+1 GN burrito
+1 GN cake
+1 GN cat
+1 GN cozy bed
+1 GN donut
+1 GN floof
+1 GN flower
+1 GN kitten
 1 GN meadow
+1 GN pie
 1 GN pillow
+1 GN puppy
+1 GN salsa
+1 GN taco
 1 GN zoo
 
 1 GADJ awesome
@@ -233,6 +236,7 @@
 1 GADJ comfortable
 1 GADJ cool
 1 GADJ cozy
+1 GADJ delicious
 1 GADJ excellent
 1 GADJ fluffy
 1 GADJ good

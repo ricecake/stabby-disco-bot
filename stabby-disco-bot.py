@@ -9,6 +9,8 @@ import re
 import aiohttp
 import yaml
 import pydantic 
+from hashlib import sha512
+import json
 
 ### In the future, should support using dream frame code to make up a random prompt
 ### also make it randomly say "do you ever just stop and thing about" and then some random weird shit from a special grammer file.
@@ -127,7 +129,7 @@ def gen_description(prompt):
     return (title, desc)
 
 
-async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int = 20, width: int = 1024, height: int = 1024, overlay: bool = True, spoiler: bool=False, tiling: bool = False):
+async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int = 20, width: int = 1024, height: int = 1024, overlay: bool = True, spoiler: bool=False, tiling: bool = False, restore_faces: bool = True, seed: int = -1, cfg_scale: float = 7.0):
     url = config.sd_host
 
     payload = {
@@ -140,6 +142,9 @@ async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int
         "refiner_switch_at": 0.8,
         "refiner_checkpoint": "sd_xl_refiner_1.0",
         "sampler_index": "DPM++ 2M",
+        "seed": seed,
+        "cfg_scale": cfg_scale,
+        "restore_faces": restore_faces,
     }
 
     filtered_payload = {
@@ -152,7 +157,33 @@ async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int
         r = await response.json()
 
         image_data = r["images"][0]
-        image = io.BytesIO(base64.b64decode(image_data.split(",",1)[0]))
+
+        gen_info = json.loads(r["info"])
+        filtered_gen_info = {
+            key: value for key, value in gen_info.items() if key is not None and key in [
+                "prompt",
+                "negative_prompt",
+                "seed",
+                "sampler_name",
+                "scheduler",
+                "steps",
+                "cfg_scale",
+                "width",
+                "height",
+                "restore_faces",
+                "tiling",
+                "refiner_checkpoint",
+                "refiner_switch_at",
+                "sampler_index",
+            ]
+        }
+        reprompt_struct = filtered_payload
+        reprompt_struct.update(filtered_gen_info)
+        print("Generated: {}".format(prettify_params(**reprompt_struct)))
+
+        raw_image = base64.b64decode(image_data.split(",",1)[0])
+        image = io.BytesIO(raw_image)
+        image_hash = sha512(raw_image).hexdigest()
 
         working_image = Image.open(image)
 
@@ -166,7 +197,7 @@ async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int
         image = buf
 
         base_name = re.sub(r'[^\w\d]+', '-', prompt)
-        return File(fp=image, filename="{}.png".format(base_name), description=prompt, spoiler=spoiler)
+        return File(fp=image, filename="{}-{}.png".format(base_name, image_hash[0:6]), description=prompt, spoiler=spoiler), reprompt_struct
 
 
 class Grammar():
@@ -257,10 +288,11 @@ class MyClient(discord.Client):
 
 
 async def generation_interaction(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False) -> None:
-    await interaction.response.defer(thinking=True)
+    await interaction.response.defer(ephemeral=True)
     try:
-        file = await generate_ai_image(prompt=prompt, negative_prompt=negative, overlay=overlay, spoiler=spoiler, tiling=tiling)
-        await interaction.followup.send(file=file, silent=True)
+        file, reprompt_struct = await generate_ai_image(prompt=prompt, negative_prompt=negative, overlay=overlay, spoiler=spoiler, tiling=tiling)
+        await interaction.followup.send(prettify_params(**reprompt_struct), ephemeral=True)
+        await interaction.channel.send(file=file, silent=True)
     except Exception as ex:
         print(ex)
         display = prettify_params(
@@ -334,6 +366,26 @@ async def ai_message_content(interaction: discord.Interaction, message: discord.
     negative = "boring"
 
     await generation_interaction(interaction, prompt=prompt, negative=negative)
+
+# This context menu command only works on messages
+@client.tree.context_menu(name='Censor Generated Image')
+async def censor_generated_image(interaction: discord.Interaction, message: discord.Message):
+    if message.author.id != client.user.id:
+        await interaction.response.send_message("Unfortunately, I didn't make that one...", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    new_files = []
+    for file in message.attachments:
+        buf = io.BytesIO()
+        await file.save(buf)
+        new_file = File(fp=buf, filename=file.filename, description=file.description, spoiler=True)
+        new_files.append(new_file)
+
+    await message.edit(attachments=new_files)
+
+    await interaction.followup.send('Sorry about the upset!', ephemeral=True)
 
 
 client.run(config.token)
