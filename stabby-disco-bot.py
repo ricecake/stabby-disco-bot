@@ -127,7 +127,7 @@ def gen_description(prompt):
     return (title, desc)
 
 
-async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int = 20, width: int = 1024, height: int = 1024, overlay: bool = True):
+async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int = 20, width: int = 1024, height: int = 1024, overlay: bool = True, spoiler: bool=False, tiling: bool = False):
     url = config.sd_host
 
     payload = {
@@ -136,9 +136,10 @@ async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int
         "steps": steps,
         "width": width,
         "height": height,
+        "tiling": tiling,
         "refiner_switch_at": 0.8,
         "refiner_checkpoint": "sd_xl_refiner_1.0",
-        "sampler_index": "DPM++ 2M"
+        "sampler_index": "DPM++ 2M",
     }
 
     filtered_payload = {
@@ -165,7 +166,7 @@ async def generate_ai_image(prompt: str, negative_prompt: str = None, steps: int
         image = buf
 
         base_name = re.sub(r'[^\w\d]+', '-', prompt)
-        return File(fp=image, filename="{}.png".format(base_name), description=prompt)
+        return File(fp=image, filename="{}.png".format(base_name), description=prompt, spoiler=spoiler)
 
 
 class Grammar():
@@ -255,10 +256,10 @@ class MyClient(discord.Client):
             await self.tree.sync(guild=guild)
 
 
-async def generation_interaction(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True) -> None:
+async def generation_interaction(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False) -> None:
     await interaction.response.defer(thinking=True)
     try:
-        file = await generate_ai_image(prompt=prompt, negative_prompt=negative, overlay=overlay)
+        file = await generate_ai_image(prompt=prompt, negative_prompt=negative, overlay=overlay, spoiler=spoiler, tiling=tiling)
         await interaction.followup.send(file=file, silent=True)
     except Exception as ex:
         print(ex)
@@ -297,7 +298,7 @@ async def on_disconnect():
 async def inspire(interaction: discord.Interaction):
     """Some old fashioned AI inspiration"""
     inspiration = prompt_grammar.generate()
-    await interaction.response.send_message(content=f"Consider {inspiration}.  Maybe that will bring you what you need.", silent=True)
+    await interaction.response.send_message(content=inspiration, silent=True)
 
 @client.tree.command()
 async def bezos(interaction: discord.Interaction):
@@ -317,11 +318,13 @@ async def karma_wheel(interaction: discord.Interaction):
 @app_commands.describe(
     prompt="The prompt to generate an image based off of",
     negative="The negative prompt to keep things out of the image",
-    overlay="Should a text overlay be added with the image prompt?"
+    overlay="Should a text overlay be added with the image prompt?",
+    tiling="Request that image tile",
+    spoiler="Hide image behind spoiler filter",
 )
-async def generate(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True):
+async def generate(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False):
     """Generates an image"""
-    await generation_interaction(interaction, prompt=prompt, negative=negative, overlay=overlay)
+    await generation_interaction(interaction, prompt=prompt, negative=negative, overlay=overlay, spoiler=spoiler, tiling=tiling)
 
 
 # This context menu command only works on messages
