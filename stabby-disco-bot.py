@@ -293,7 +293,7 @@ async def generation_interaction(interaction: discord.Interaction, prompt: str, 
         file, reprompt_struct = await generate_ai_image(prompt=prompt, negative_prompt=negative, overlay=overlay, spoiler=spoiler, tiling=tiling)
         await interaction.followup.send(prettify_params(**reprompt_struct), ephemeral=True)
         await interaction.followup.send(
-            content='`{}` for {}'.format(prompt, interaction.user.display_name),
+            content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
             file=file,
             silent=True)
     except Exception as ex:
