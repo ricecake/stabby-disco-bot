@@ -36,23 +36,27 @@ def prettify_params(**kwargs) -> str:
     return ', '.join(display)
 
 
-async def generate_ai_image(session: aiohttp.ClientSession, prompt: str, negative_prompt: str = None, steps: int = 20, width: int = 1024, height: int = 1024, overlay: bool = True, spoiler: bool=False, tiling: bool = False, restore_faces: bool = True, seed: int = -1, cfg_scale: float = 7.0):
+async def generate_ai_image(session: aiohttp.ClientSession, prompt: str, negative_prompt: str = None, steps: int = 20, width: int = 1024, height: int = 1024, overlay: bool = True, spoiler: bool=False, tiling: bool = False, restore_faces: bool = True, seed: int = -1, cfg_scale: float = 7.0, use_refiner:bool = True):
     url = config.sd_host
 
     payload = {
+        "sampler_index": "DPM++ 2M",
         "prompt": prompt,
         "negative_prompt": negative_prompt,
         "steps": steps,
         "width": width,
         "height": height,
         "tiling": tiling,
-        "refiner_switch_at": 0.8,
-        "refiner_checkpoint": "sd_xl_refiner_1.0",
-        "sampler_index": "DPM++ 2M",
         "seed": seed,
         "cfg_scale": cfg_scale,
         "restore_faces": restore_faces,
     }
+
+    if use_refiner:
+        payload.update({
+            "refiner_switch_at": 0.8,
+            "refiner_checkpoint": "sd_xl_refiner_1.0",
+        })
 
     filtered_payload = {
         key: value for key, value in payload.items() if value is not None

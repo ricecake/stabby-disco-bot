@@ -12,10 +12,10 @@ karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
 session = None
 
-async def generation_interaction(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False) -> None:
+async def generation_interaction(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False, restore_faces: bool = True, seed: int = -1, cfg_scale: float = 7.0, use_refiner:bool = True, steps:int= 20) -> None:
     await interaction.response.defer(ephemeral=True)
     try:
-        file, reprompt_struct = await generation.generate_ai_image(session=session, prompt=prompt, negative_prompt=negative, overlay=overlay, spoiler=spoiler, tiling=tiling)
+        file, reprompt_struct = await generation.generate_ai_image(session=session, prompt=prompt, negative_prompt=negative, overlay=overlay, spoiler=spoiler, tiling=tiling, restore_faces=restore_faces, seed=seed, cfg_scale=cfg_scale, steps=steps, use_refiner=use_refiner)
         await interaction.followup.send(generation.prettify_params(**reprompt_struct), ephemeral=True)
         await interaction.followup.send(
             content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
@@ -91,10 +91,11 @@ async def karma_wheel(interaction: discord.Interaction):
     overlay="Should a text overlay be added with the image prompt?",
     tiling="Request that image tile",
     spoiler="Hide image behind spoiler filter",
+    restore_faces="Fix faces in post processing"
 )
-async def generate(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False):
+async def generate(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False, restore_faces: bool = True):
     """Generates an image"""
-    await generation_interaction(interaction, prompt=prompt, negative=negative, overlay=overlay, spoiler=spoiler, tiling=tiling)
+    await generation_interaction(interaction, prompt=prompt, negative=negative, overlay=overlay, spoiler=spoiler, tiling=tiling, restore_faces=restore_faces)
 
 
 # This context menu command only works on messages
