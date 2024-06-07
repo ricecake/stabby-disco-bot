@@ -1,3 +1,4 @@
+from typing import Optional
 import base64
 import json
 import re
@@ -36,7 +37,21 @@ def prettify_params(**kwargs) -> str:
     return ', '.join(display)
 
 
-async def generate_ai_image(session: aiohttp.ClientSession, prompt: str, negative_prompt: str = None, steps: int = 20, width: int = 1024, height: int = 1024, overlay: bool = True, spoiler: bool=False, tiling: bool = False, restore_faces: bool = True, seed: int = -1, cfg_scale: float = 7.0, use_refiner:bool = True):
+async def generate_ai_image(
+        session: aiohttp.ClientSession,
+        prompt: str,
+        negative_prompt: Optional[str] = None,
+        overlay: bool = True,
+        spoiler: bool = False,
+        tiling: bool = False,
+        restore_faces: bool = True,
+        use_refiner: bool = True,
+        width: int = 1024,
+        height: int = 1024,
+        seed: int = -1,
+        cfg_scale: float = 7.0,
+        steps: int = 20,
+    ):
     url = config.sd_host
 
     payload = {

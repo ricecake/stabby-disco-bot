@@ -12,10 +12,34 @@ karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
 session = None
 
-async def generation_interaction(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False, restore_faces: bool = True, seed: int = -1, cfg_scale: float = 7.0, use_refiner:bool = True, steps:int= 20) -> None:
+async def generation_interaction(
+        interaction: discord.Interaction,
+        prompt: str,
+        negative: Optional[str] = None,
+        overlay: bool = True,
+        spoiler: bool = False,
+        tiling: bool = False,
+        restore_faces: bool = True,
+        use_refiner: bool = True,
+        seed: int = -1,
+        cfg_scale: float = 7.0,
+        steps: int = 20
+    ) -> None:
     await interaction.response.defer(ephemeral=True)
     try:
-        file, reprompt_struct = await generation.generate_ai_image(session=session, prompt=prompt, negative_prompt=negative, overlay=overlay, spoiler=spoiler, tiling=tiling, restore_faces=restore_faces, seed=seed, cfg_scale=cfg_scale, steps=steps, use_refiner=use_refiner)
+        file, reprompt_struct = await generation.generate_ai_image(
+            session=session,
+            prompt=prompt,
+            negative_prompt=negative,
+            overlay=overlay,
+            spoiler=spoiler,
+            tiling=tiling,
+            restore_faces=restore_faces,
+            seed=seed,
+            cfg_scale=cfg_scale,
+            steps=steps,
+            use_refiner=use_refiner,
+        )
         await interaction.followup.send(generation.prettify_params(**reprompt_struct), ephemeral=True)
         await interaction.followup.send(
             content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
@@ -73,7 +97,12 @@ async def inspire(interaction: discord.Interaction):
 @client.tree.command()
 async def bezos(interaction: discord.Interaction):
     """Right into the sun with ya'"""
-    await generation_interaction(interaction, prompt="Jeff bezos on fire, falling into the sun, space flight, giant catapult,  fear, man engulfed in flames", negative_prompt="happy, excited, joy, cool, stoic, strong", overlay=False)
+    await generation_interaction(
+        interaction,
+        prompt="Jeff bezos on fire, falling into the sun, space flight, giant catapult,  fear, man engulfed in flames",
+        negative_prompt="happy, excited, joy, cool, stoic, strong",
+        overlay=False
+    )
 
 
 @client.tree.command(name="karma-wheel")
@@ -93,9 +122,25 @@ async def karma_wheel(interaction: discord.Interaction):
     spoiler="Hide image behind spoiler filter",
     restore_faces="Fix faces in post processing"
 )
-async def generate(interaction: discord.Interaction, prompt: str, negative: Optional[str] = None, overlay: bool = True, spoiler: bool = False, tiling: bool = False, restore_faces: bool = True):
+async def generate(
+        interaction: discord.Interaction,
+        prompt: str,
+        negative: Optional[str] = None,
+        overlay: bool = True,
+        spoiler: bool = False,
+        tiling: bool = False,
+        restore_faces: bool = True
+    ):
     """Generates an image"""
-    await generation_interaction(interaction, prompt=prompt, negative=negative, overlay=overlay, spoiler=spoiler, tiling=tiling, restore_faces=restore_faces)
+    await generation_interaction(
+        interaction,
+        prompt=prompt,
+        negative=negative,
+        overlay=overlay,
+        spoiler=spoiler,
+        tiling=tiling,
+        restore_faces=restore_faces,
+    )
 
 
 # This context menu command only works on messages
