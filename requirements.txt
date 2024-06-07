@@ -3,4 +3,5 @@ discord.py
 requests
 pillow
 aiohttp[speedups]
-pydantic 
+pydantic
+sqlalchemy

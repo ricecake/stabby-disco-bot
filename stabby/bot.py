@@ -7,6 +7,8 @@ import discord
 from discord import File, app_commands
 
 from stabby import conf, generation, grammar
+from stabby.schema import db_session, Preferences, Generation
+
 
 session = None
 config = conf.load_conf()
