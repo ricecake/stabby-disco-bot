@@ -7,9 +7,11 @@ import aiohttp
 from PIL import Image, ImageDraw
 from hashlib import sha512
 from discord import File
+import logging
 
 from stabby import conf, image
 config = conf.load_conf()
+logger = logging.getLogger('discord')
 
 
 def gen_description(prompt):
@@ -77,7 +79,7 @@ async def generate_ai_image(
         key: value for key, value in payload.items() if value is not None
     }
 
-    print("Generating: {}".format(prettify_params(**payload)))
+    logger.info("Generating: {}".format(prettify_params(**payload)))
 
     async with session.post(url=f'{url}/sdapi/v1/txt2img', json=filtered_payload) as response:
         r = await response.json()
@@ -105,7 +107,7 @@ async def generate_ai_image(
         }
         reprompt_struct = filtered_payload
         reprompt_struct.update(filtered_gen_info)
-        print("Generated: {}".format(prettify_params(**reprompt_struct)))
+        logger.info("Generated: {}".format(prettify_params(**reprompt_struct)))
 
         raw_image = base64.b64decode(image_data.split(",",1)[0])
         image_hash = sha512(raw_image).hexdigest()

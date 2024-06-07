@@ -1,5 +1,6 @@
 from typing import Optional
 
+import logging
 import io
 import aiohttp
 import discord
@@ -7,10 +8,11 @@ from discord import File, app_commands
 
 from stabby import conf, generation, grammar
 
+session = None
 config = conf.load_conf()
+logger = logging.getLogger('discord')
 karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
-session = None
 
 async def generation_interaction(
         interaction: discord.Interaction,
@@ -46,7 +48,7 @@ async def generation_interaction(
             file=file,
             silent=True)
     except Exception as ex:
-        print(ex)
+        logger.info(ex)
         display = generation.prettify_params(
             prompt=prompt,
             negative=negative,
@@ -54,11 +56,20 @@ async def generation_interaction(
         )
         await interaction.followup.send("Generation is offline right now, but I would have given you: {}".format(display), silent=True)
 
+default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
+
+async def default_error_handler(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    logger.error(str(error))
+
+    if isinstance(error, app_commands.CommandOnCooldown):
+        await interaction.response.send_message(str(error), ephemeral=True)
+
 class StabbyDiscoBot(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
+        self.tree.error(default_error_handler)
 
     async def setup_hook(self):
         for guild_id in config.guilds:
@@ -68,25 +79,22 @@ class StabbyDiscoBot(discord.Client):
 
 client = StabbyDiscoBot()
 
-default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
-
 @client.event
 async def on_ready():
-    print(f'Logged in as {client.user} (ID: {client.user.id})')
+    logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
     global session
     session = aiohttp.ClientSession()
-    print('------')
+    logger.info('------')
 
 @client.event
 async def on_resumed():
-    print("Resuming session")
+    logger.info("Resuming session")
     global session
     session = aiohttp.ClientSession()
 
-
 @client.event
 async def on_disconnect():
-    print("Handling disconnect")
+    logger.info("Handling disconnect")
     await session.close()
 
 @client.tree.command()
