@@ -292,7 +292,10 @@ async def generation_interaction(interaction: discord.Interaction, prompt: str, 
     try:
         file, reprompt_struct = await generate_ai_image(prompt=prompt, negative_prompt=negative, overlay=overlay, spoiler=spoiler, tiling=tiling)
         await interaction.followup.send(prettify_params(**reprompt_struct), ephemeral=True)
-        await interaction.channel.send(file=file, silent=True)
+        await interaction.followup.send(
+            content='`{}` for {}'.format(prompt, interaction.user.display_name),
+            file=file,
+            silent=True)
     except Exception as ex:
         print(ex)
         display = prettify_params(
@@ -300,7 +303,7 @@ async def generation_interaction(interaction: discord.Interaction, prompt: str, 
             negative=negative,
             overlay=overlay,
         )
-        await interaction.followup.send("Generation is offline right now, but I would have given you: {}".format(display))
+        await interaction.followup.send("Generation is offline right now, but I would have given you: {}".format(display), silent=True)
 
 
 intents = discord.Intents.default()
