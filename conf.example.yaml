@@ -1,6 +1,8 @@
 ---
 invite_url: INVITE URL
 token: YOUR BOT TOKEN
+ratelimit_count: 1
+ratelimit_window: 20.0
 karma_grammar: karma_grammar.txt
 prompt_grammar: prompt_grammar.txt
 title_font: droid-sans-mono.ttf

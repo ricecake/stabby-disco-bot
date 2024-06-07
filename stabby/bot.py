@@ -68,6 +68,7 @@ class StabbyDiscoBot(discord.Client):
 
 client = StabbyDiscoBot()
 
+default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
 
 @client.event
 async def on_ready():
@@ -95,6 +96,7 @@ async def inspire(interaction: discord.Interaction):
     await interaction.response.send_message(content=inspiration, silent=True)
 
 @client.tree.command()
+@default_ratelimiter
 async def bezos(interaction: discord.Interaction):
     """Right into the sun with ya'"""
     await generation_interaction(
@@ -106,6 +108,7 @@ async def bezos(interaction: discord.Interaction):
 
 
 @client.tree.command(name="karma-wheel")
+@default_ratelimiter
 async def karma_wheel(interaction: discord.Interaction):
     """Spin the wheel, see what they get"""
     prompt = karma_grammar.generate()
@@ -122,6 +125,7 @@ async def karma_wheel(interaction: discord.Interaction):
     spoiler="Hide image behind spoiler filter",
     restore_faces="Fix faces in post processing"
 )
+@default_ratelimiter
 async def generate(
         interaction: discord.Interaction,
         prompt: str,
@@ -145,6 +149,7 @@ async def generate(
 
 # This context menu command only works on messages
 @client.tree.context_menu(name='AI-ify this bad boy')
+@default_ratelimiter
 async def ai_message_content(interaction: discord.Interaction, message: discord.Message):
     prompt = message.clean_content
     negative = "boring"

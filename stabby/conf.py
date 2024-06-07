@@ -12,6 +12,8 @@ class Conf(pydantic.BaseModel):
     artist_font: str = pydantic.Field(default='droid-sans-mono.ttf')
     sd_host: str = pydantic.Field(default='http://127.0.0.1:7860')
     guilds: list[int] = pydantic.Field(default_factory=lambda: list())
+    ratelimit_count: int = pydantic.Field(default=1)
+    ratelimit_window: float = pydantic.Field(default=20.0)
 
 def load_conf() -> Conf:
     global conf
