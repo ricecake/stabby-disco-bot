@@ -8,9 +8,10 @@ from discord import File, app_commands
 
 from stabby import conf, generation, grammar
 from stabby.schema import db_session, Preferences, Generation
+from sqlalchemy import select
 
 
-session = None
+http_client = None
 config = conf.load_conf()
 logger = logging.getLogger('discord')
 karma_grammar = grammar.Grammar(config.karma_grammar)
@@ -31,40 +32,67 @@ async def generation_interaction(
     ) -> None:
     await interaction.response.defer(ephemeral=True)
     try:
-        file, reprompt_struct = await generation.generate_ai_image(
-            session=session,
-            prompt=prompt,
-            negative_prompt=negative,
-            overlay=overlay,
-            spoiler=spoiler,
-            tiling=tiling,
-            restore_faces=restore_faces,
-            seed=seed,
-            cfg_scale=cfg_scale,
-            steps=steps,
-            use_refiner=use_refiner,
-        )
-        await interaction.followup.send(generation.prettify_params(**reprompt_struct), ephemeral=True)
-        await interaction.followup.send(
-            content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
-            file=file,
-            silent=True)
+        with db_session() as session:
+            gen_instance = Generation(
+                user_id=interaction.user.id,
+                prompt=prompt,
+                negative_prompt=negative,
+                overlay=overlay,
+                spoiler=spoiler,
+                tiling=tiling,
+                restore_faces=restore_faces,
+                seed=seed,
+                cfg_scale=cfg_scale,
+                steps=steps,
+                use_refiner=use_refiner,
+            )
+            session.add(gen_instance)
+            session.commit()
+
+            file, reprompt_struct = await generation.generate_ai_image(
+                http_client=http_client,
+                prompt=prompt,
+                negative_prompt=negative,
+                overlay=overlay,
+                spoiler=spoiler,
+                tiling=tiling,
+                restore_faces=restore_faces,
+                seed=seed,
+                cfg_scale=cfg_scale,
+                steps=steps,
+                use_refiner=use_refiner,
+            )
+            await interaction.followup.send(generation.prettify_params(reprompt_struct), ephemeral=True)
+            message = await interaction.followup.send(
+                content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
+                file=file,
+                silent=True
+            )
+
+            gen_instance.message_id = message.id
+            gen_instance.update_from_dict(reprompt_struct)
+            session.commit()
+
     except Exception as ex:
         logger.info(ex)
-        display = generation.prettify_params(
+        display = generation.prettify_params(dict(
             prompt=prompt,
             negative=negative,
             overlay=overlay,
-        )
+        ))
         await interaction.followup.send("Generation is offline right now, but I would have given you: {}".format(display), silent=True)
 
 default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
 
 async def default_error_handler(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    logger.error(str(error))
+    logger.error(error)
 
-    if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(str(error), ephemeral=True)
+    match type(error):
+        case app_commands.CommandOnCooldown:
+            await interaction.response.send_message(str(error), ephemeral=True)
+        case _:
+            await interaction.response.send_message("Something went wrong...", ephemeral=True)
+
 
 class StabbyDiscoBot(discord.Client):
     def __init__(self):
@@ -84,20 +112,20 @@ client = StabbyDiscoBot()
 @client.event
 async def on_ready():
     logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
-    global session
-    session = aiohttp.ClientSession()
+    global http_client
+    http_client = aiohttp.ClientSession()
     logger.info('------')
 
 @client.event
 async def on_resumed():
     logger.info("Resuming session")
-    global session
-    session = aiohttp.ClientSession()
+    global http_client
+    http_client = aiohttp.ClientSession()
 
 @client.event
 async def on_disconnect():
     logger.info("Handling disconnect")
-    await session.close()
+    await http_client.close()
 
 @client.tree.command()
 async def inspire(interaction: discord.Interaction):
@@ -185,4 +213,24 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
     await message.edit(attachments=new_files)
 
     await interaction.followup.send('Sorry about the upset!', ephemeral=True)
+
+# This context menu command only works on messages
+@client.tree.context_menu(name='Get Generation Parameters')
+async def censor_generated_image(interaction: discord.Interaction, message: discord.Message):
+    if message.author.id != client.user.id:
+        await interaction.response.send_message("Unfortunately, I didn't make that one...", ephemeral=True)
+        return
+
+    await interaction.response.defer(ephemeral=True)
+
+    with db_session() as session:
+        message_id = message.id
+        saved_generation = session.scalar(select(Generation).where(Generation.message_id == message_id))
+        if saved_generation is None:
+            await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+            return
+        
+
+        display = generation.prettify_params(saved_generation.regen_params())
+        await interaction.followup.send(display)
 

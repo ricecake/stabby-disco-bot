@@ -27,6 +27,10 @@ class Base(MappedAsDataclass, DeclarativeBase):
 
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+    
+    def update_from_dict(self, updates: dict):
+        for field, value in updates.items():
+            setattr(self, field, value)
 
 
 def init_db():
@@ -71,3 +75,22 @@ class Generation(Base):
     cfg_scale: Mapped[float] = mapped_column(nullable=True, default=None)
     steps: Mapped[int] = mapped_column(nullable=True, default=None)
     seed: Mapped[int] = mapped_column(nullable=True, default=None)
+
+    def regen_params(self):
+        fields = self.as_dict()
+        return {
+            field: value for field, value in fields.items() if field is not None and field in [
+                'prompt',
+                'negative_prompt',
+                'overlay',
+                'spoiler',
+                'tiling',
+                'restore_faces',
+                'use_refiner',
+                'width',
+                'height',
+                'cfg_scale',
+                'steps',
+                'seed',
+            ]
+        }

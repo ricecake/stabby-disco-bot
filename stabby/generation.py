@@ -26,9 +26,9 @@ def gen_description(prompt):
         desc = " ".join(parts[1].split())
     return (title, desc)
 
-def prettify_params(**kwargs) -> str:
+def prettify_params(params) -> str:
     filtered_kwargs = [
-        (key, value) for key, value in sorted(kwargs.items()) if value is not None
+        (key, value) for key, value in sorted(params.items()) if value is not None
     ]
 
     display = []
@@ -40,7 +40,7 @@ def prettify_params(**kwargs) -> str:
 
 
 async def generate_ai_image(
-        session: aiohttp.ClientSession,
+        http_client: aiohttp.ClientSession,
         prompt: str,
         negative_prompt: Optional[str] = None,
         overlay: bool = True,
@@ -79,9 +79,9 @@ async def generate_ai_image(
         key: value for key, value in payload.items() if value is not None
     }
 
-    logger.info("Generating: {}".format(prettify_params(**payload)))
+    logger.info("Generating: {}".format(prettify_params(payload)))
 
-    async with session.post(url=f'{url}/sdapi/v1/txt2img', json=filtered_payload) as response:
+    async with http_client.post(url=f'{url}/sdapi/v1/txt2img', json=filtered_payload) as response:
         r = await response.json()
 
         image_data = r["images"][0]
@@ -107,7 +107,7 @@ async def generate_ai_image(
         }
         reprompt_struct = filtered_payload
         reprompt_struct.update(filtered_gen_info)
-        logger.info("Generated: {}".format(prettify_params(**reprompt_struct)))
+        logger.info("Generated: {}".format(prettify_params(reprompt_struct)))
 
         raw_image = base64.b64decode(image_data.split(",",1)[0])
         image_hash = sha512(raw_image).hexdigest()
