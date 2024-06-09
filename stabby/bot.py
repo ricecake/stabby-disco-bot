@@ -1,10 +1,13 @@
-from typing import Optional
+from operator import ge
+from reprlib import recursive_repr
+from typing import Optional, OrderedDict
 
 import logging
 import io
 import aiohttp
 import discord
 from discord import File, app_commands
+from functools import wraps, partial
 
 from stabby import conf, generation, grammar
 from stabby.schema import db_session, Preferences, Generation
@@ -20,28 +23,33 @@ prompt_grammar = grammar.Grammar(config.prompt_grammar)
 async def generation_interaction(
         interaction: discord.Interaction,
         prompt: str,
-        negative: Optional[str] = None,
+        negative_prompt: Optional[str] = None,
         overlay: bool = True,
         spoiler: bool = False,
         tiling: bool = False,
         restore_faces: bool = True,
         use_refiner: bool = True,
+        width: int = 1024,
+        height: int = 1024,
         seed: int = -1,
         cfg_scale: float = 7.0,
         steps: int = 20
     ) -> None:
-    await interaction.response.defer(ephemeral=True)
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True)
     try:
         with db_session() as session:
             gen_instance = Generation(
                 user_id=interaction.user.id,
                 prompt=prompt,
-                negative_prompt=negative,
+                negative_prompt=negative_prompt,
                 overlay=overlay,
                 spoiler=spoiler,
                 tiling=tiling,
                 restore_faces=restore_faces,
                 seed=seed,
+                width=width,
+                height=height,
                 cfg_scale=cfg_scale,
                 steps=steps,
                 use_refiner=use_refiner,
@@ -52,12 +60,14 @@ async def generation_interaction(
             file, reprompt_struct = await generation.generate_ai_image(
                 http_client=http_client,
                 prompt=prompt,
-                negative_prompt=negative,
+                negative_prompt=negative_prompt,
                 overlay=overlay,
                 spoiler=spoiler,
                 tiling=tiling,
                 restore_faces=restore_faces,
                 seed=seed,
+                width=width,
+                height=height,
                 cfg_scale=cfg_scale,
                 steps=steps,
                 use_refiner=use_refiner,
@@ -77,7 +87,7 @@ async def generation_interaction(
         logger.info(ex)
         display = generation.prettify_params(dict(
             prompt=prompt,
-            negative=negative,
+            negative=negative_prompt,
             overlay=overlay,
         ))
         await interaction.followup.send("Generation is offline right now, but I would have given you: {}".format(display), silent=True)
@@ -89,9 +99,9 @@ async def default_error_handler(interaction: discord.Interaction, error: app_com
 
     match type(error):
         case app_commands.CommandOnCooldown:
-            await interaction.response.send_message(str(error), ephemeral=True)
+            await interaction.followup.send(str(error), ephemeral=True)
         case _:
-            await interaction.response.send_message("Something went wrong...", ephemeral=True)
+            await interaction.followup.send("Something went wrong...", ephemeral=True)
 
 
 class StabbyDiscoBot(discord.Client):
@@ -154,20 +164,43 @@ async def karma_wheel(interaction: discord.Interaction):
     await generation_interaction(interaction, prompt=prompt)
 
 
+def make_autocompleter(field: str):
+    async def autocompleter(interaction: discord.Interaction, current: str):
+        with db_session() as session:
+            saved_generations = session.scalars(
+                select(Generation)
+                .where(getattr(Generation, field).icontains(current, autoescape=True))
+                .order_by(Generation.created_at.desc())
+            )
+            matches = OrderedDict()
+            values = [getattr(generation, field, None) for generation in saved_generations]
+
+            for value in values:
+                if value is not None:
+                    matches[value] = app_commands.Choice(name=value, value=value)
+
+            return matches.values()
+
+    return autocompleter
+
+
 @client.tree.command()
 @app_commands.describe(
     prompt="The prompt to generate an image based off of",
-    negative="The negative prompt to keep things out of the image",
+    negative_prompt="The negative prompt to keep things out of the image",
     overlay="Should a text overlay be added with the image prompt?",
     tiling="Request that image tile",
     spoiler="Hide image behind spoiler filter",
     restore_faces="Fix faces in post processing"
 )
+@app_commands.autocomplete(
+    prompt=make_autocompleter('prompt')
+)
 @default_ratelimiter
 async def generate(
         interaction: discord.Interaction,
         prompt: str,
-        negative: Optional[str] = None,
+        negative_prompt: Optional[str] = None,
         overlay: bool = True,
         spoiler: bool = False,
         tiling: bool = False,
@@ -177,7 +210,7 @@ async def generate(
     await generation_interaction(
         interaction,
         prompt=prompt,
-        negative=negative,
+        negative_prompt=negative_prompt,
         overlay=overlay,
         spoiler=spoiler,
         tiling=tiling,
@@ -185,22 +218,106 @@ async def generate(
     )
 
 
+@client.tree.command()
+@app_commands.describe(
+    prompt="The prompt to generate an image based off of",
+    negative_prompt="The negative prompt to keep things out of the image",
+    recycle_seed='Use the same seed as the prompt being regenerated',
+    restore_faces="Fix faces in post processing",
+    spoiler="Hide image behind spoiler filter",
+    overlay="Should a text overlay be added with the image prompt?",
+    tiling="Request that image tile",
+    message_id='The ID of the message to regenerate',
+)
+@app_commands.autocomplete(
+    prompt=make_autocompleter('prompt')
+)
+@default_ratelimiter
+async def regen(
+        interaction: discord.Interaction,
+        prompt: str = None,
+        negative_prompt: str = None,
+        recycle_seed: bool = None,
+        restore_faces: bool = None,
+        spoiler: bool = None,
+        overlay: bool = None,
+        tiling: bool = None,
+        message_id: str = None,
+):
+    """Regenerate an image from a previous generation"""
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    if message_id is not None:
+        message_id = int(message_id)
+
+    params = {
+        field: value for field, value in dict(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            restore_faces=restore_faces,
+            spoiler=spoiler,
+            overlay=overlay,
+            tiling=tiling,
+        ).items() if value is not None
+    }
+
+    stmnt = None
+    if message_id:
+        stmnt = select(Generation).where(Generation.message_id == message_id).order_by(Generation.created_at.desc())
+    else:
+        stmnt = select(Generation).where(Generation.user_id == interaction.user.id).order_by(Generation.created_at.desc())
+
+    regen_params = None
+    with db_session() as session:
+        previous_gen = session.scalar(stmnt)
+        if previous_gen is None:
+            await interaction.followup.send("I can't seem to find a message to regenerate...")
+            return
+        
+        regen_params = previous_gen.regen_params()
+        regen_params.update(params)
+
+    # This is also where more preference merging would go
+    if recycle_seed is not None and not recycle_seed:
+        regen_params['seed'] = -1
+
+    await generation_interaction(
+        interaction,
+        **regen_params
+    )
+
+
+@client.tree.command()
+@app_commands.describe()
+@default_ratelimiter
+async def preferences(interaction: discord.Interaction):
+    """Function"""
+    await interaction.response.send_message('Poop', ephemeral=True)
+
+
 # This context menu command only works on messages
 @client.tree.context_menu(name='AI-ify this bad boy')
 @default_ratelimiter
 async def ai_message_content(interaction: discord.Interaction, message: discord.Message):
     prompt = message.clean_content
-    negative = "boring"
+    negative = "boring, dull, NSFW, porn, nudity"
 
     await generation_interaction(interaction, prompt=prompt, negative=negative)
 
+def only_self_messages(f: callable):
+    @wraps(f)
+    async def wrapper(interaction: discord.Interaction, message: discord.Message):
+        if message.author.id != client.user.id:
+            await interaction.response.send_message("Unfortunately, I didn't make that one...", ephemeral=True)
+            return
+        return await f(interaction, message)
+    
+    return wrapper
+
+
 # This context menu command only works on messages
 @client.tree.context_menu(name='Censor Generated Image')
+@only_self_messages
 async def censor_generated_image(interaction: discord.Interaction, message: discord.Message):
-    if message.author.id != client.user.id:
-        await interaction.response.send_message("Unfortunately, I didn't make that one...", ephemeral=True)
-        return
-
     await interaction.response.defer(ephemeral=True)
 
     new_files = []
@@ -216,11 +333,8 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
 
 # This context menu command only works on messages
 @client.tree.context_menu(name='Get Generation Parameters')
-async def censor_generated_image(interaction: discord.Interaction, message: discord.Message):
-    if message.author.id != client.user.id:
-        await interaction.response.send_message("Unfortunately, I didn't make that one...", ephemeral=True)
-        return
-
+@only_self_messages
+async def fetch_generation_params(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
 
     with db_session() as session:

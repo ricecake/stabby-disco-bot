@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import func
 from sqlalchemy import DateTime
 from sqlalchemy import create_engine
+from sqlalchemy import select
 from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -44,12 +45,26 @@ class Preferences(Base):
         DateTime(timezone=True), server_default=func.now(), default=None,
     )
 
-    user_id: Mapped[int] = mapped_column(nullable=False, default=None)
+    user_id: Mapped[int] = mapped_column(nullable=False, default=None, unique=True)
+
     overlay: Mapped[bool] = mapped_column(default=True)
     spoiler: Mapped[bool] = mapped_column(default=False)
     tiling: Mapped[bool] = mapped_column(default=False)
     restore_faces: Mapped[bool] = mapped_column(default=True)
     use_refiner: Mapped[bool] = mapped_column(default=True)
+    regen_recycles_seed: Mapped[bool] = mapped_column(default=True)
+    regen_preserves_overlay: Mapped[bool] = mapped_column(default=False)
+
+    @classmethod
+    def get_user_preferences(cls, user_id:int) -> Preferences:
+        with db_session() as session:
+            saved_preferences = session.scalar(select(Preferences).where(Preferences.user_id == user_id))
+            if saved_preferences is None:
+                saved_preferences = Preferences(user_id=user_id)
+                session.add(saved_preferences)
+                session.commit()
+            
+            return saved_preferences
 
 
 class Generation(Base):
