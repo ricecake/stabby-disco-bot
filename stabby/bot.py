@@ -16,7 +16,7 @@ from sqlalchemy import select
 
 http_client = None
 config = conf.load_conf()
-logger = logging.getLogger('discord')
+logger = logging.getLogger('discord.stabby')
 karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
 
@@ -112,12 +112,18 @@ class StabbyDiscoBot(discord.Client):
         self.tree.error(default_error_handler)
 
     async def setup_hook(self):
-        for guild_id in config.guilds:
-            guild = discord.Object(id=guild_id)
+        guilds = self.guilds
+        for guild in guilds:
+            logger.info("Configuring guild {}".format(guild.name))
+            guild = discord.Object(id=guild.id)
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
 
 client = StabbyDiscoBot()
+
+@client.event
+async def on_guild_join(guild):
+    logger.info("Joined guild")
 
 @client.event
 async def on_ready():

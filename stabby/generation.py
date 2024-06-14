@@ -11,7 +11,7 @@ import logging
 
 from stabby import conf, image
 config = conf.load_conf()
-logger = logging.getLogger('discord')
+logger = logging.getLogger('discord.stabby.generator')
 
 
 def gen_description(prompt):

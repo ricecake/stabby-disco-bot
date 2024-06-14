@@ -13,7 +13,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 
 from stabby import conf
 config = conf.load_conf()
-logger = logging.getLogger('discord')
+logger = logging.getLogger('discord.stabby.schema')
 
 
 engine = create_engine('sqlite:///stabby-disco.db', echo=False)
