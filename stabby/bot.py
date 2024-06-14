@@ -166,18 +166,22 @@ async def karma_wheel(interaction: discord.Interaction):
 
 def make_autocompleter(field: str):
     async def autocompleter(interaction: discord.Interaction, current: str):
+        logger.info("Autocomplete [{}] [{}]".format(field, current))
         with db_session() as session:
-            saved_generations = session.scalars(
-                select(Generation)
+            query = (select(Generation)
+                .where(getattr(Generation, field) != None)
+                .where(getattr(Generation, field) != '')
                 .where(getattr(Generation, field).icontains(current, autoescape=True))
                 .order_by(Generation.created_at.desc())
-            )
+                .limit(25))
+
+            saved_generations = session.scalars(query)
             matches = OrderedDict()
             values = [getattr(generation, field, None) for generation in saved_generations]
 
             for value in values:
-                if value is not None:
-                    matches[value] = app_commands.Choice(name=value, value=value)
+                logger.info(value)
+                matches[value] = app_commands.Choice(name=value, value=value)
 
             return matches.values()
 
@@ -194,7 +198,8 @@ def make_autocompleter(field: str):
     restore_faces="Fix faces in post processing"
 )
 @app_commands.autocomplete(
-    prompt=make_autocompleter('prompt')
+    prompt=make_autocompleter('prompt'),
+    negative_prompt=make_autocompleter('negative_prompt'),
 )
 @default_ratelimiter
 async def generate(
@@ -230,7 +235,8 @@ async def generate(
     message_id='The ID of the message to regenerate',
 )
 @app_commands.autocomplete(
-    prompt=make_autocompleter('prompt')
+    prompt=make_autocompleter('prompt'),
+    negative_prompt=make_autocompleter('negative_prompt'),
 )
 @default_ratelimiter
 async def regen(
@@ -312,6 +318,50 @@ def only_self_messages(f: callable):
         return await f(interaction, message)
     
     return wrapper
+
+
+# This context menu command only works on messages
+@client.tree.context_menu(name='Again! Again!')
+@default_ratelimiter
+async def regen_with_new_seed(interaction: discord.Interaction, message: discord.Message):
+    await interaction.response.defer(ephemeral=True)
+
+    regen_params = None
+    with db_session() as session:
+        message_id = message.id
+        saved_generation = session.scalar(select(Generation).where(Generation.message_id == message_id))
+        if saved_generation is None:
+            await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+            return
+        regen_params = saved_generation.regen_params()
+
+    regen_params['seed'] = -1
+    await generation_interaction(
+        interaction,
+        **regen_params
+    )
+
+
+# This context menu command only works on messages
+@client.tree.context_menu(name='Sans overlay')
+@default_ratelimiter
+async def regen_with_new_seed(interaction: discord.Interaction, message: discord.Message):
+    await interaction.response.defer(ephemeral=True)
+
+    regen_params = None
+    with db_session() as session:
+        message_id = message.id
+        saved_generation = session.scalar(select(Generation).where(Generation.message_id == message_id))
+        if saved_generation is None:
+            await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+            return
+        regen_params = saved_generation.regen_params()
+
+    regen_params['overlay'] = False
+    await generation_interaction(
+        interaction,
+        **regen_params
+    )
 
 
 # This context menu command only works on messages
