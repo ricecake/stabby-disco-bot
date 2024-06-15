@@ -112,10 +112,9 @@ class StabbyDiscoBot(discord.Client):
         self.tree.error(default_error_handler)
 
     async def setup_hook(self):
-        guilds = self.guilds
-        for guild in guilds:
-            logger.info("Configuring guild {}".format(guild.name))
-            guild = discord.Object(id=guild.id)
+        for guild_id in config.guilds:
+            logger.info("Configuring guild {}".format(guild_id))
+            guild = discord.Object(id=guild_id)
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
 
