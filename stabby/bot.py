@@ -312,7 +312,7 @@ async def ai_message_content(interaction: discord.Interaction, message: discord.
     prompt = message.clean_content
     negative = "boring, dull, NSFW, porn, nudity"
 
-    await generation_interaction(interaction, prompt=prompt, negative=negative)
+    await generation_interaction(interaction, prompt=prompt, negative_prompt=negative)
 
 def only_self_messages(f: callable):
     @wraps(f)
