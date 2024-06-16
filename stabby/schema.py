@@ -66,6 +66,30 @@ class Preferences(Base):
             
             return saved_preferences
 
+class ServerPreferences(Base):
+    __tablename__ = "server_preferences"
+    id: Mapped[int] = mapped_column(
+        init=False, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), default=None,
+    )
+
+    server_id: Mapped[int] = mapped_column(nullable=False, default=None, unique=True)
+
+    default_negative_prompt: Mapped[str] = mapped_column(default=None)
+    required_negative_prompt: Mapped[str] = mapped_column(default=None)
+
+    @classmethod
+    def get_server_preferences(cls, server_id:int) -> ServerPreferences:
+        with db_session() as session:
+            saved_preferences = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == server_id))
+            if saved_preferences is None:
+                saved_preferences = ServerPreferences(server_id=server_id)
+                session.add(saved_preferences)
+                session.commit()
+            
+            return saved_preferences
+
 
 class Generation(Base):
     __tablename__ = "generation"
