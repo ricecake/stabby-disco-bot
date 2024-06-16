@@ -19,6 +19,9 @@ karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
 
 default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
+db_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count*10, config.ratelimit_window)
+ephemeral_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count*30, config.ratelimit_window)
+
 
 async def interaction_must_reply(interaction: discord.Interaction, message: str, ephemeral: bool = True, silent: bool = True):
     if not interaction.response.is_done():
@@ -162,6 +165,7 @@ async def on_disconnect():
     await http_client.close()
 
 @client.tree.command()
+@ephemeral_ratelimiter
 async def inspire(interaction: discord.Interaction):
     """Some old fashioned AI inspiration"""
     inspiration = prompt_grammar.generate()
@@ -330,7 +334,7 @@ async def regen(
     required_negative_prompt=make_autocompleter('required_negative_prompt'),
 )
 @app_commands.default_permissions(administrator=True)
-@default_ratelimiter
+@db_ratelimiter
 async def set_server_preferences(
         interaction: discord.Interaction,
         required_negative_prompt: Optional[str] = None,
@@ -360,7 +364,7 @@ async def set_server_preferences(
     clear_field='The server preference to clear'
 )
 @app_commands.default_permissions(administrator=True)
-@default_ratelimiter
+@db_ratelimiter
 async def unset_server_preferences(
         interaction: discord.Interaction,
         clear_field: Literal['default_negative_prompt', 'required_negative_prompt']
@@ -377,7 +381,7 @@ async def unset_server_preferences(
 
 @client.tree.command()
 @app_commands.describe()
-@default_ratelimiter
+@db_ratelimiter
 async def preferences(interaction: discord.Interaction):
     """Function"""
     await interaction.response.send_message('Poop', ephemeral=True)
@@ -450,6 +454,7 @@ async def regen_with_new_seed(interaction: discord.Interaction, message: discord
 # This context menu command only works on messages
 @client.tree.context_menu(name='Censor Generated Image')
 @only_self_messages
+@ephemeral_ratelimiter
 async def censor_generated_image(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
 
@@ -467,6 +472,7 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
 # This context menu command only works on messages
 @client.tree.context_menu(name='Get Generation Parameters')
 @only_self_messages
+@db_ratelimiter
 async def fetch_generation_params(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
 
