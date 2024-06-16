@@ -76,8 +76,8 @@ class ServerPreferences(Base):
 
     server_id: Mapped[int] = mapped_column(nullable=False, default=None, unique=True)
 
-    default_negative_prompt: Mapped[str] = mapped_column(default=None)
-    required_negative_prompt: Mapped[str] = mapped_column(default=None)
+    default_negative_prompt: Mapped[str] = mapped_column(default=None, nullable=True)
+    required_negative_prompt: Mapped[str] = mapped_column(default=None, nullable=True)
 
     @classmethod
     def get_server_preferences(cls, server_id:int) -> ServerPreferences:

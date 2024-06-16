@@ -315,7 +315,7 @@ async def regen(
 @default_ratelimiter
 async def set_server_preferences(
         interaction: discord.Interaction,
-        required_negative_prompt: OPtional[str] = None,
+        required_negative_prompt: Optional[str] = None,
         default_negative_prompt: Optional[str] = None,
 ):
     """Function"""
@@ -324,9 +324,10 @@ async def set_server_preferences(
         return
     settings = {
         'required_negative_prompt': required_negative_prompt,
-        'default_negative_propt': default_negative_prompt,
+        'default_negative_prompt': default_negative_prompt,
     }
-    for key in settings.keys():
+    settings_keys = list(settings.items())
+    for key, value in settings_keys:
         if settings[key] is None:
             settings.pop(key, None)
     
@@ -334,7 +335,7 @@ async def set_server_preferences(
         saved_server_prefs = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == interaction.guild_id))
         if saved_server_prefs is None:
             saved_server_prefs = ServerPreferences(server_id=interaction.guild_id)
-            session.add(saved_preferences)
+            session.add(saved_server_prefs)
 
         saved_server_prefs.update_from_dict(settings)
         session.commit()
@@ -363,9 +364,10 @@ async def unset_server_preferences(
         else:
             settings = {
                 'required_negative_prompt': required_negative_prompt,
-                'default_negative_propt': default_negative_prompt,
+                'default_negative_prompt': default_negative_prompt,
             }
-            for key in settings.keys():
+            settings_keys = list(settings.items())
+            for key, value in settings_keys:
                 if settings[key]:
                     settings[key] = None
                 else:
