@@ -8,7 +8,7 @@ from discord import File, app_commands
 from functools import wraps
 
 from stabby import conf, generation, grammar
-from stabby.schema import db_session, Preferences, Generation
+from stabby.schema import db_session, Preferences, Generation, ServerPreferences
 from sqlalchemy import select
 
 
@@ -219,6 +219,12 @@ async def generate(
         restore_faces: bool = True
     ):
     """Generates an image"""
+    with db_session() as session:
+        saved_server_prefs = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == interaction.guild_id))
+        if negative_prompt is None:
+            negative_prompt = saved_server_prefs.default_negative_prompt
+        if saved_server_prefs.required_negative_prompt:
+            negative_prompt = F"{negative_prompt}, {saved_server_prefs.required_negative_prompt}"
     await generation_interaction(
         interaction,
         prompt=prompt,
@@ -298,6 +304,81 @@ async def regen(
         **regen_params
     )
 
+
+@client.tree.command()
+@app_commands.describe(
+    default_negative_prompt="A negative prompt to apply if none is provided",
+    required_negative_prompt="A negative prompt to append to all prompts",
+)
+@app_commands.autocomplete(
+    default_negative_prompt=make_autocompleter('default_negative_prompt'),
+    required_negative_prompt=make_autocompleter('required_negative_prompt'),
+)
+@default_ratelimiter
+async def set_server_preferences(
+        interaction: discord.Interaction,
+        required_negative_prompt: Optional[str] = None,
+        default_negative_prompt: Optional[str] = None,
+):
+    """Function"""
+    if interaction.guild.owner_id != interaction.user.id:
+        await interaction.followup.send("No")
+        return
+    settings = {
+        'required_negative_prompt': required_negative_prompt,
+        'default_negative_prompt': default_negative_prompt,
+    }
+    settings_keys = list(settings.items())
+    for key, value in settings_keys:
+        if settings[key] is None:
+            settings.pop(key, None)
+    
+    with db_session() as session:
+        saved_server_prefs = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == interaction.guild_id))
+        if saved_server_prefs is None:
+            saved_server_prefs = ServerPreferences(server_id=interaction.guild_id)
+            session.add(saved_server_prefs)
+
+        saved_server_prefs.update_from_dict(settings)
+        session.commit()
+
+    await interaction.followup.send(F"Server preferences saved as: {saved_server_prefs.as_dict()}")
+
+@client.tree.command()
+@app_commands.describe(
+    default_negative_prompt="A negative prompt to apply if none is provided",
+    required_negative_prompt="A negative prompt to append to all prompts",
+)
+@default_ratelimiter
+async def unset_server_preferences(
+        interaction: discord.Interaction,
+        default_negative_prompt: Optional[bool] = None,
+        required_negative_prompt: Optional[bool] = None,
+) -> None:
+    if interaction.guild.owner_id != interaction.user.id:
+        await interaction.followup.send("No")
+        return
+    with db_session() as session:
+        saved_server_prefs = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == interaction.guild_id))
+        if saved_server_prefs is None:
+            saved_preferences = ServerPreferences(server_id=interaction.guild_id)
+            session.add(saved_server_prefs)
+        else:
+            settings = {
+                'required_negative_prompt': required_negative_prompt,
+                'default_negative_prompt': default_negative_prompt,
+            }
+            settings_keys = list(settings.items())
+            for key, value in settings_keys:
+                if settings[key]:
+                    settings[key] = None
+                else:
+                    settings.pop(key, None)
+            saved_server_prefs.update_from_dict(settings)
+        
+        session.commit()
+    await interaction.followup.send(F"Server preferences saved as: {saved_server_prefs.as_dict()}")
+    
 
 @client.tree.command()
 @app_commands.describe()
