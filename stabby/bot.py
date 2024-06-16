@@ -1,4 +1,4 @@
-from typing import Optional, OrderedDict
+from typing import Literal, Optional, OrderedDict
 
 import logging
 import io
@@ -18,6 +18,14 @@ logger = logging.getLogger('discord.stabby')
 karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
 
+default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
+
+async def interaction_must_reply(interaction: discord.Interaction, message: str, ephemeral: bool = True, silent: bool = True):
+    if not interaction.response.is_done():
+        await interaction.response.send_message(message, ephemeral=ephemeral, silent=silent)
+    else:
+        await interaction.followup.send(message, ephemeral=ephemeral, silent=silent)
+
 async def generation_interaction(
         interaction: discord.Interaction,
         prompt: str,
@@ -36,7 +44,22 @@ async def generation_interaction(
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
     try:
+        saved_server_prefs = ServerPreferences.get_server_preferences(interaction.guild_id)
         with db_session() as session:
+            session.add(saved_server_prefs)
+
+            negative_prompt_components = []
+            if negative_prompt is not None:
+                negative_prompt_components.append(negative_prompt)
+            elif saved_server_prefs.default_negative_prompt is not None:
+                negative_prompt_components.append(saved_server_prefs.default_negative_prompt)
+
+            if saved_server_prefs.required_negative_prompt is not None:
+                negative_prompt_components.append(saved_server_prefs.required_negative_prompt)
+
+            negative_prompt = ', '.join(negative_prompt_components)
+
+
             gen_instance = Generation(
                 user_id=interaction.user.id,
                 prompt=prompt,
@@ -88,18 +111,16 @@ async def generation_interaction(
             negative=negative_prompt,
             overlay=overlay,
         ))
-        await interaction.followup.send("Generation is offline right now, but I would have given you: {}".format(display), silent=True)
-
-default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
+        await interaction_must_reply(interaction, "Generation is offline right now, but I would have given you: {}".format(display), silent=True)
 
 async def default_error_handler(interaction: discord.Interaction, error: app_commands.AppCommandError):
     logger.error(error)
 
     match type(error):
         case app_commands.CommandOnCooldown:
-            await interaction.followup.send(str(error), ephemeral=True)
+            await interaction_must_reply(interaction, str(error), ephemeral=True)
         case _:
-            await interaction.followup.send("Something went wrong...", ephemeral=True)
+            await interaction_must_reply(interaction, "Something went wrong...", ephemeral=True)
 
 
 class StabbyDiscoBot(discord.Client):
@@ -219,12 +240,6 @@ async def generate(
         restore_faces: bool = True
     ):
     """Generates an image"""
-    with db_session() as session:
-        saved_server_prefs = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == interaction.guild_id))
-        if negative_prompt is None:
-            negative_prompt = saved_server_prefs.default_negative_prompt
-        if saved_server_prefs.required_negative_prompt:
-            negative_prompt = F"{negative_prompt}, {saved_server_prefs.required_negative_prompt}"
     await generation_interaction(
         interaction,
         prompt=prompt,
@@ -314,68 +329,48 @@ async def regen(
     default_negative_prompt=make_autocompleter('default_negative_prompt'),
     required_negative_prompt=make_autocompleter('required_negative_prompt'),
 )
+@app_commands.default_permissions(administrator=True)
 @default_ratelimiter
 async def set_server_preferences(
         interaction: discord.Interaction,
         required_negative_prompt: Optional[str] = None,
         default_negative_prompt: Optional[str] = None,
 ):
-    """Function"""
-    if interaction.guild.owner_id != interaction.user.id:
-        await interaction.followup.send("No")
-        return
+    """Set server specific defaults and policies for the bot to adhere to"""
+    await interaction.response.defer(thinking=True, ephemeral=True)
     settings = {
         'required_negative_prompt': required_negative_prompt,
         'default_negative_prompt': default_negative_prompt,
     }
-    settings_keys = list(settings.items())
-    for key, value in settings_keys:
+    settings_keys = list(settings.keys())
+    for key in settings_keys:
         if settings[key] is None:
             settings.pop(key, None)
     
+    saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild_id)
     with db_session() as session:
-        saved_server_prefs = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == interaction.guild_id))
-        if saved_server_prefs is None:
-            saved_server_prefs = ServerPreferences(server_id=interaction.guild_id)
-            session.add(saved_server_prefs)
-
+        session.add(saved_server_prefs)
         saved_server_prefs.update_from_dict(settings)
         session.commit()
 
-    await interaction.followup.send(F"Server preferences saved as: {saved_server_prefs.as_dict()}")
+    await interaction.followup.send(F"Server [{interaction.guild.name}] preferences saved as: {saved_server_prefs.as_dict()}")
 
 @client.tree.command()
 @app_commands.describe(
-    default_negative_prompt="A negative prompt to apply if none is provided",
-    required_negative_prompt="A negative prompt to append to all prompts",
+    clear_field='The server preference to clear'
 )
+@app_commands.default_permissions(administrator=True)
 @default_ratelimiter
 async def unset_server_preferences(
         interaction: discord.Interaction,
-        default_negative_prompt: Optional[bool] = None,
-        required_negative_prompt: Optional[bool] = None,
+        clear_field: Literal['default_negative_prompt', 'required_negative_prompt']
 ) -> None:
-    if interaction.guild.owner_id != interaction.user.id:
-        await interaction.followup.send("No")
-        return
+    """Unset a server specific default or policies"""
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild_id)
     with db_session() as session:
-        saved_server_prefs = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == interaction.guild_id))
-        if saved_server_prefs is None:
-            saved_preferences = ServerPreferences(server_id=interaction.guild_id)
-            session.add(saved_server_prefs)
-        else:
-            settings = {
-                'required_negative_prompt': required_negative_prompt,
-                'default_negative_prompt': default_negative_prompt,
-            }
-            settings_keys = list(settings.items())
-            for key, value in settings_keys:
-                if settings[key]:
-                    settings[key] = None
-                else:
-                    settings.pop(key, None)
-            saved_server_prefs.update_from_dict(settings)
-        
+        session.add(saved_server_prefs)
+        setattr(saved_server_prefs, clear_field, None)
         session.commit()
     await interaction.followup.send(F"Server preferences saved as: {saved_server_prefs.as_dict()}")
     

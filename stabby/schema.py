@@ -18,7 +18,7 @@ logger = logging.getLogger('discord.stabby.schema')
 
 engine = create_engine('sqlite:///stabby-disco.db', echo=False)
 db_session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=False,
+                                         autoflush=True,
                                          expire_on_commit=False,
                                          bind=engine))
 
