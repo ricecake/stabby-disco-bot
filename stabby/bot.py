@@ -1,5 +1,3 @@
-from operator import ge
-from reprlib import recursive_repr
 from typing import Optional, OrderedDict
 
 import logging
@@ -7,7 +5,7 @@ import io
 import aiohttp
 import discord
 from discord import File, app_commands
-from functools import wraps, partial
+from functools import wraps
 
 from stabby import conf, generation, grammar
 from stabby.schema import db_session, Preferences, Generation
@@ -177,16 +175,20 @@ def make_autocompleter(field: str):
                 .where(getattr(Generation, field) != None)
                 .where(getattr(Generation, field) != '')
                 .where(getattr(Generation, field).icontains(current, autoescape=True))
-                .order_by(Generation.created_at.desc())
-                .limit(25))
+                .order_by(Generation.created_at.desc()))
 
             saved_generations = session.scalars(query)
             matches = OrderedDict()
-            values = [getattr(generation, field, None) for generation in saved_generations]
 
-            for value in values:
-                logger.info(value)
+            for generation in saved_generations:
+                value = getattr(generation, field)
+                if len(value) > 100:
+                    continue
+
                 matches[value] = app_commands.Choice(name=value, value=value)
+
+                if len(matches) >= 25:
+                    break
 
             return matches.values()
 
