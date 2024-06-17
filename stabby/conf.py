@@ -1,21 +1,23 @@
 from typing import Optional
 import yaml
-import pydantic 
+import pydantic
 
 conf = None
 
+
 class GlobalDefaults(pydantic.BaseModel):
-        negative_prompt: Optional[str] = None
-        overlay: bool = True
-        spoiler: bool = False
-        tiling: bool = False
-        restore_faces: bool = True
-        use_refiner: bool = True
-        width: int = 1024
-        height: int = 1024
-        seed: int = -1
-        cfg_scale: float = 7.0
-        steps: int = 20
+    negative_prompt: Optional[str] = None
+    overlay: bool = True
+    spoiler: bool = False
+    tiling: bool = False
+    restore_faces: bool = True
+    use_refiner: bool = True
+    width: int = 1024
+    height: int = 1024
+    seed: int = -1
+    cfg_scale: float = 7.0
+    steps: int = 20
+
 
 class Conf(pydantic.BaseModel):
     invite_url: str

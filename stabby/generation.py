@@ -26,6 +26,7 @@ def gen_description(prompt):
         desc = " ".join(parts[1].split())
     return (title, desc)
 
+
 def prettify_params(params) -> str:
     filtered_kwargs = [
         (key, value) for key, value in params.items() if value is not None
@@ -52,8 +53,7 @@ async def generate_ai_image(
         height: int = 1024,
         seed: int = -1,
         cfg_scale: float = 7.0,
-        steps: int = 20,
-    ):
+        steps: int = 20):
     url = config.sd_host
 
     payload = {
@@ -109,7 +109,7 @@ async def generate_ai_image(
         reprompt_struct.update(filtered_gen_info)
         logger.info("Generated: {}".format(prettify_params(reprompt_struct)))
 
-        raw_image = base64.b64decode(image_data.split(",",1)[0])
+        raw_image = base64.b64decode(image_data.split(",", 1)[0])
         image_hash = sha512(raw_image).hexdigest()
         image_bytes = io.BytesIO(raw_image)
 
@@ -117,7 +117,8 @@ async def generate_ai_image(
 
         if overlay:
             title, desc = gen_description(prompt)
-            image.add_text_to_image(ImageDraw.Draw(working_image, 'RGBA'), height, width, title, desc)
+            image.add_text_to_image(ImageDraw.Draw(
+                working_image, 'RGBA'), height, width, title, desc)
 
         buf = io.BytesIO()
         working_image.save(buf, format='PNG')

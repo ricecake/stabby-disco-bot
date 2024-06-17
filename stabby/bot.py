@@ -1,4 +1,4 @@
-from typing import Literal, Optional, OrderedDict
+from typing import Callable, Literal, Optional, OrderedDict
 
 import logging
 import io
@@ -11,15 +11,15 @@ from stabby import conf, generation, grammar
 from stabby.schema import db_session, Preferences, Generation, ServerPreferences
 from sqlalchemy import select
 
-http_client = None
+http_client: Optional[aiohttp.ClientSession] = None
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby')
 karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
 
 default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
-db_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count*10, config.ratelimit_window)
-ephemeral_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count*30, config.ratelimit_window)
+db_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count * 10, config.ratelimit_window)
+ephemeral_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count * 30, config.ratelimit_window)
 
 
 async def interaction_must_reply(interaction: discord.Interaction, message: str, ephemeral: bool = True, silent: bool = True):
@@ -28,12 +28,14 @@ async def interaction_must_reply(interaction: discord.Interaction, message: str,
     else:
         await interaction.followup.send(message, ephemeral=ephemeral, silent=silent)
 
-def tokenize_prompt(prompt: str) -> list[str]:
+
+def tokenize_prompt(prompt: Optional[str]) -> list[str]:
     if prompt is None:
         return []
     return [s.strip() for s in prompt.split(',')]
 
-def merge_prompts(first: str, second: str) -> Optional[str]:
+
+def merge_prompts(first: Optional[str], second: Optional[str]) -> Optional[str]:
     first_tokens = tokenize_prompt(first)
     second_tokens = tokenize_prompt(second)
 
@@ -43,8 +45,13 @@ def merge_prompts(first: str, second: str) -> Optional[str]:
 
     return ', '.join(list(OrderedDict.fromkeys(first_tokens + second_tokens)))
 
+
 def apply_defaults(interaction: discord.Interaction, request_params: dict):
-    server_prefs = ServerPreferences.get_server_preferences(interaction.guild_id)
+    if interaction.guild_id is None:
+        return
+
+    server_prefs = ServerPreferences.get_server_preferences(
+        interaction.guild_id)
     user_prefs = Preferences.get_user_preferences(interaction.user.id)
 
     default_params = {}
@@ -57,6 +64,7 @@ def apply_defaults(interaction: discord.Interaction, request_params: dict):
 
     return apply_default_params(request_params, default_params)
 
+
 def apply_default_params(request_params: dict, default_params: dict):
     new_params = request_params.copy()
     for field, value in default_params.items():
@@ -65,25 +73,30 @@ def apply_default_params(request_params: dict, default_params: dict):
 
     return new_params
 
+
 async def generation_interaction(
-        interaction: discord.Interaction,
-        prompt: str,
-        negative_prompt: Optional[str] = None,
-        overlay: Optional[bool] = None,
-        spoiler: Optional[bool] = None,
-        tiling: Optional[bool] = None,
-        restore_faces: Optional[bool] = None,
-        use_refiner: Optional[bool] = None,
-        width: Optional[int] = None,
-        height: Optional[int] = None,
-        seed: Optional[int] = None,
-        cfg_scale: Optional[float] = None,
-        steps: Optional[int] = None,
-    ) -> None:
+    interaction: discord.Interaction,
+    prompt: str,
+    negative_prompt: Optional[str] = None,
+    overlay: Optional[bool] = None,
+    spoiler: Optional[bool] = None,
+    tiling: Optional[bool] = None,
+    restore_faces: Optional[bool] = None,
+    use_refiner: Optional[bool] = None,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+    seed: Optional[int] = None,
+    cfg_scale: Optional[float] = None,
+    steps: Optional[int] = None,
+) -> None:
+    if interaction.guild_id is None:
+        return
+
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
     try:
-        saved_server_prefs = ServerPreferences.get_server_preferences(interaction.guild_id)
+        saved_server_prefs = ServerPreferences.get_server_preferences(
+            interaction.guild_id)
         with db_session() as session:
             session.add(saved_server_prefs)
 
@@ -121,18 +134,22 @@ async def generation_interaction(
             )
             new_params = apply_defaults(interaction, params)
 
-            new_params['negative_prompt'] = merge_prompts(new_params.get('negative_prompt'), saved_server_prefs.required_negative_prompt)
+            new_params['negative_prompt'] = merge_prompts(new_params.get(
+                'negative_prompt'), saved_server_prefs.required_negative_prompt)
 
+            assert http_client is not None
             file, reprompt_struct = await generation.generate_ai_image(
                 http_client=http_client,
                 **new_params
             )
             await interaction.followup.send(generation.prettify_params(reprompt_struct), ephemeral=True)
+
             message = await interaction.followup.send(
                 content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
                 file=file,
-                silent=True
-            )
+                wait=True,
+                silent=True,
+            )  # type: ignore[call-overload]
 
             gen_instance.message_id = message.id
             gen_instance.update_from_dict(reprompt_struct)
@@ -146,6 +163,7 @@ async def generation_interaction(
             overlay=overlay,
         ))
         await interaction_must_reply(interaction, "Generation is offline right now, but I would have given you: {}".format(display), silent=True)
+
 
 async def default_error_handler(interaction: discord.Interaction, error: app_commands.AppCommandError):
     logger.error(error)
@@ -171,11 +189,14 @@ class StabbyDiscoBot(discord.Client):
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
 
+
 client = StabbyDiscoBot()
+
 
 @client.event
 async def on_guild_join(guild):
     logger.info("Joined guild")
+
 
 @client.event
 async def on_ready():
@@ -184,16 +205,19 @@ async def on_ready():
     http_client = aiohttp.ClientSession()
     logger.info('------')
 
+
 @client.event
 async def on_resumed():
     logger.info("Resuming session")
     global http_client
     http_client = aiohttp.ClientSession()
 
+
 @client.event
 async def on_disconnect():
     logger.info("Handling disconnect")
     await http_client.close()
+
 
 @client.tree.command()
 @ephemeral_ratelimiter
@@ -201,6 +225,7 @@ async def inspire(interaction: discord.Interaction):
     """Some old fashioned AI inspiration"""
     inspiration = prompt_grammar.generate()
     await interaction.response.send_message(content=inspiration, silent=True)
+
 
 @client.tree.command()
 @default_ratelimiter
@@ -226,18 +251,19 @@ async def karma_wheel(interaction: discord.Interaction):
 def make_autocompleter(field: str):
     async def autocompleter(interaction: discord.Interaction, current: str):
         logger.info("Autocomplete [{}] [{}]".format(field, current))
+        column = getattr(Generation, field)
         with db_session() as session:
             query = (select(Generation)
-                .where(getattr(Generation, field) != None)
-                .where(getattr(Generation, field) != '')
-                .where(getattr(Generation, field).icontains(current, autoescape=True))
-                .order_by(Generation.created_at.desc()))
+                     .where(column.is_not(None))
+                     .where(column != '')
+                     .where(column.icontains(current, autoescape=True))
+                     .order_by(Generation.created_at.desc()))
 
             saved_generations = session.scalars(query)
             matches = OrderedDict()
 
-            for generation in saved_generations:
-                value = getattr(generation, field)
+            for curr_generation in saved_generations:
+                value = getattr(curr_generation, field)
                 if len(value) > 100:
                     continue
 
@@ -266,14 +292,14 @@ def make_autocompleter(field: str):
 )
 @default_ratelimiter
 async def generate(
-        interaction: discord.Interaction,
-        prompt: str,
-        negative_prompt: Optional[str] = None,
-        overlay: Optional[bool] = None,
-        spoiler: Optional[bool] = None,
-        tiling: Optional[bool] = None,
-        restore_faces: Optional[bool] = None,
-    ):
+    interaction: discord.Interaction,
+    prompt: str,
+    negative_prompt: Optional[str] = None,
+    overlay: Optional[bool] = None,
+    spoiler: Optional[bool] = None,
+    tiling: Optional[bool] = None,
+    restore_faces: Optional[bool] = None,
+):
     """Generates an image"""
     await generation_interaction(
         interaction,
@@ -304,19 +330,19 @@ async def generate(
 @default_ratelimiter
 async def regen(
         interaction: discord.Interaction,
-        prompt: str = None,
-        negative_prompt: str = None,
-        recycle_seed: bool = None,
-        restore_faces: bool = None,
-        spoiler: bool = None,
-        overlay: bool = None,
-        tiling: bool = None,
-        message_id: str = None,
+        prompt: Optional[str] = None,
+        negative_prompt: Optional[str] = None,
+        recycle_seed: Optional[bool] = None,
+        restore_faces: Optional[bool] = None,
+        spoiler: Optional[bool] = None,
+        overlay: Optional[bool] = None,
+        tiling: Optional[bool] = None,
+        message_id: Optional[str] = None,
 ):
     """Regenerate an image from a previous generation"""
     await interaction.response.defer(thinking=True, ephemeral=True)
     if message_id is not None:
-        message_id = int(message_id)
+        image_message_id = int(message_id)
 
     params = {
         field: value for field, value in dict(
@@ -330,8 +356,8 @@ async def regen(
     }
 
     stmnt = None
-    if message_id:
-        stmnt = select(Generation).where(Generation.message_id == message_id).order_by(Generation.created_at.desc())
+    if image_message_id:
+        stmnt = select(Generation).where(Generation.message_id == image_message_id).order_by(Generation.created_at.desc())
     else:
         stmnt = select(Generation).where(Generation.user_id == interaction.user.id).order_by(Generation.created_at.desc())
 
@@ -341,7 +367,7 @@ async def regen(
         if previous_gen is None:
             await interaction.followup.send("I can't seem to find a message to regenerate...")
             return
-        
+
         regen_params = previous_gen.regen_params()
         regen_params = apply_default_params(params, regen_params)
 
@@ -381,7 +407,7 @@ async def set_server_preferences(
     for key in settings_keys:
         if settings[key] is None:
             settings.pop(key, None)
-    
+
     saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild_id)
     with db_session() as session:
         session.add(saved_server_prefs)
@@ -389,6 +415,7 @@ async def set_server_preferences(
         session.commit()
 
     await interaction.followup.send(F"Server [{interaction.guild.name}] preferences saved as: {saved_server_prefs.as_dict()}")
+
 
 @client.tree.command()
 @app_commands.describe(
@@ -398,7 +425,8 @@ async def set_server_preferences(
 @db_ratelimiter
 async def unset_server_preferences(
         interaction: discord.Interaction,
-        clear_field: Literal['default_negative_prompt', 'required_negative_prompt']
+        clear_field: Literal['default_negative_prompt',
+                             'required_negative_prompt']
 ) -> None:
     """Unset a server specific default or policies"""
     await interaction.response.defer(thinking=True, ephemeral=True)
@@ -408,7 +436,7 @@ async def unset_server_preferences(
         setattr(saved_server_prefs, clear_field, None)
         session.commit()
     await interaction.followup.send(F"Server preferences saved as: {saved_server_prefs.as_dict()}")
-    
+
 
 @client.tree.command()
 @app_commands.describe()
@@ -427,14 +455,15 @@ async def ai_message_content(interaction: discord.Interaction, message: discord.
 
     await generation_interaction(interaction, prompt=prompt, negative_prompt=negative)
 
-def only_self_messages(f: callable):
+
+def only_self_messages(f: Callable):
     @wraps(f)
     async def wrapper(interaction: discord.Interaction, message: discord.Message):
         if message.author.id != client.user.id:
             await interaction.response.send_message("Unfortunately, I didn't make that one...", ephemeral=True)
             return
         return await f(interaction, message)
-    
+
     return wrapper
 
 
@@ -447,7 +476,8 @@ async def regen_with_new_seed(interaction: discord.Interaction, message: discord
     regen_params = None
     with db_session() as session:
         message_id = message.id
-        saved_generation = session.scalar(select(Generation).where(Generation.message_id == message_id))
+        saved_generation = session.scalar(
+            select(Generation).where(Generation.message_id == message_id))
         if saved_generation is None:
             await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
             return
@@ -469,7 +499,8 @@ async def regen_without_overlay(interaction: discord.Interaction, message: disco
     regen_params = None
     with db_session() as session:
         message_id = message.id
-        saved_generation = session.scalar(select(Generation).where(Generation.message_id == message_id))
+        saved_generation = session.scalar(
+            select(Generation).where(Generation.message_id == message_id))
         if saved_generation is None:
             await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
             return
@@ -493,7 +524,8 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
     for file in message.attachments:
         buf = io.BytesIO()
         await file.save(buf)
-        new_file = File(fp=buf, filename=file.filename, description=file.description, spoiler=True)
+        new_file = File(fp=buf, filename=file.filename,
+                        description=file.description, spoiler=True)
         new_files.append(new_file)
 
     await message.edit(attachments=new_files)
@@ -501,6 +533,8 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
     await interaction.followup.send('Sorry about the upset!', ephemeral=True)
 
 # This context menu command only works on messages
+
+
 @client.tree.context_menu(name='Get Generation Parameters')
 @only_self_messages
 @db_ratelimiter
@@ -509,12 +543,11 @@ async def fetch_generation_params(interaction: discord.Interaction, message: dis
 
     with db_session() as session:
         message_id = message.id
-        saved_generation = session.scalar(select(Generation).where(Generation.message_id == message_id))
+        saved_generation = session.scalar(
+            select(Generation).where(Generation.message_id == message_id))
         if saved_generation is None:
             await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
             return
-        
 
         display = generation.prettify_params(saved_generation.regen_params())
         await interaction.followup.send(display)
-
