@@ -89,14 +89,14 @@ async def generation_interaction(
     cfg_scale: Optional[float] = None,
     steps: Optional[int] = None,
 ) -> None:
-    if interaction.guild_id is None:
-        return
+    assert interaction.guild is not None
+    assert http_client is not None
+    assert interaction.command is not None
 
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
     try:
-        saved_server_prefs = ServerPreferences.get_server_preferences(
-            interaction.guild_id)
+        saved_server_prefs = ServerPreferences.get_server_preferences(interaction.guild.id)
         with db_session() as session:
             session.add(saved_server_prefs)
 
@@ -137,14 +137,12 @@ async def generation_interaction(
             new_params['negative_prompt'] = merge_prompts(new_params.get(
                 'negative_prompt'), saved_server_prefs.required_negative_prompt)
 
-            assert http_client is not None
             file, reprompt_struct = await generation.generate_ai_image(
                 http_client=http_client,
                 **new_params
             )
             await interaction.followup.send(generation.prettify_params(reprompt_struct), ephemeral=True)
 
-            assert interaction.command is not None
             message = await interaction.followup.send(
                 content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
                 file=file,
@@ -152,6 +150,7 @@ async def generation_interaction(
                 silent=True,
             )  # type: ignore[call-overload]
 
+            session.add(gen_instance)
             gen_instance.message_id = message.id
             gen_instance.update_from_dict(reprompt_struct)
             session.commit()

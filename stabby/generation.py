@@ -15,6 +15,10 @@ logger = logging.getLogger('discord.stabby.generator')
 
 
 def gen_description(prompt):
+
+    prompt = re.sub(r':\s*[+-]?\d+(?:\.\d*)?\s*(?=[\)\]])', '', prompt)  # handle attention modifiers
+    prompt = re.sub(r'[ ]+', ' ', prompt)
+
     for c in '[]()':
         prompt = prompt.replace(c, '')
 
