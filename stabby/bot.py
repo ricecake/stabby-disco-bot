@@ -144,6 +144,7 @@ async def generation_interaction(
             )
             await interaction.followup.send(generation.prettify_params(reprompt_struct), ephemeral=True)
 
+            assert interaction.command is not None
             message = await interaction.followup.send(
                 content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
                 file=file,
@@ -408,7 +409,8 @@ async def set_server_preferences(
         if settings[key] is None:
             settings.pop(key, None)
 
-    saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild_id)
+    assert interaction.guild is not None
+    saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild.id)
     with db_session() as session:
         session.add(saved_server_prefs)
         saved_server_prefs.update_from_dict(settings)
@@ -430,7 +432,8 @@ async def unset_server_preferences(
 ) -> None:
     """Unset a server specific default or policies"""
     await interaction.response.defer(thinking=True, ephemeral=True)
-    saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild_id)
+    assert interaction.guild is not None
+    saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild.id)
     with db_session() as session:
         session.add(saved_server_prefs)
         setattr(saved_server_prefs, clear_field, None)
@@ -459,6 +462,7 @@ async def ai_message_content(interaction: discord.Interaction, message: discord.
 def only_self_messages(f: Callable):
     @wraps(f)
     async def wrapper(interaction: discord.Interaction, message: discord.Message):
+        assert client.user is not None
         if message.author.id != client.user.id:
             await interaction.response.send_message("Unfortunately, I didn't make that one...", ephemeral=True)
             return
