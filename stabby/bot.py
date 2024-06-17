@@ -1,4 +1,4 @@
-from typing import Optional, OrderedDict
+from typing import Callable, Optional, OrderedDict, TypedDict
 
 import logging
 import io
@@ -11,12 +11,49 @@ from stabby import conf, generation, grammar
 from stabby.schema import db_session, Preferences, Generation, ServerPreferences
 from sqlalchemy import select
 
+GenerationParams = TypedDict(
+    'GenerationParams', 
+    {
+        'prompt': str,
+        'negative_prompt': Optional[str],
+        'overlay': bool,
+        'spoiler': bool,
+        'tiling': bool,
+        'restore_faces': bool,
+        'use_refiner': bool,
+        'width': int,
+        'height': int,
+        'seed': int,
+        'cfg_scale': float,
+        'steps': int
+        
+    },
+    total=False,
+)
 
 http_client = None
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby')
 karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
+
+def apply_server_prefs(interaction: discord.Interaction, gen_params: GenerationParams):
+    saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild_id)
+    if not gen_params['negative_prompt'] and saved_server_prefs.default_negative_prompt:
+        gen_params['negative_prompt'] = saved_server_prefs.default_negative_prompt
+    
+    if saved_server_prefs.required_negative_prompt:
+        negative_prompt = gen_params.get('negative_prompt')
+        if not negative_prompt:
+            negative_prompt = ''
+
+        negative_prompt_tokens = set([ token.strip() for token in negative_prompt.split(',') ])
+        required_negative_tokens = set([ token.strip() for token in saved_server_prefs.required_negative_prompt.split(',') ])
+        for required_token in required_negative_tokens:
+            if required_token not in negative_prompt_tokens:
+                gen_params['negative_prompt'] = F"{gen_params['negative_prompt']}, {required_token}" 
+
+    return gen_params
 
 async def generation_interaction(
         interaction: discord.Interaction,
@@ -219,20 +256,19 @@ async def generate(
         restore_faces: bool = True
     ):
     """Generates an image"""
-    with db_session() as session:
-        saved_server_prefs = session.scalar(select(ServerPreferences).where(ServerPreferences.server_id == interaction.guild_id))
-        if negative_prompt is None:
-            negative_prompt = saved_server_prefs.default_negative_prompt
-        if saved_server_prefs.required_negative_prompt:
-            negative_prompt = F"{negative_prompt}, {saved_server_prefs.required_negative_prompt}"
+    params: GenerationParams = {
+        'prompt': prompt,
+        'negative_prompt': negative_prompt,
+        'overlay': overlay,
+        'spoiler': spoiler,
+        'tiling': tiling,
+        'restore_faces': restore_faces,
+    }
+  
+    apply_server_prefs(interaction, params)
     await generation_interaction(
         interaction,
-        prompt=prompt,
-        negative_prompt=negative_prompt,
-        overlay=overlay,
-        spoiler=spoiler,
-        tiling=tiling,
-        restore_faces=restore_faces,
+        **params
     )
 
 
@@ -254,19 +290,19 @@ async def generate(
 @default_ratelimiter
 async def regen(
         interaction: discord.Interaction,
-        prompt: str = None,
-        negative_prompt: str = None,
-        recycle_seed: bool = None,
-        restore_faces: bool = None,
-        spoiler: bool = None,
-        overlay: bool = None,
-        tiling: bool = None,
-        message_id: str = None,
+        prompt: Optional[str] = None,
+        negative_prompt: Optional[str] = None,
+        recycle_seed: Optional[bool] = None,
+        restore_faces: Optional[bool] = None,
+        spoiler: Optional[bool] = None,
+        overlay: Optional[bool] = None,
+        tiling: Optional[bool] = None,
+        message_id: Optional[str] = None,
 ):
     """Regenerate an image from a previous generation"""
     await interaction.response.defer(thinking=True, ephemeral=True)
     if message_id is not None:
-        message_id = int(message_id)
+        lookup_message_id = int(message_id)
 
     params = {
         field: value for field, value in dict(
@@ -280,8 +316,8 @@ async def regen(
     }
 
     stmnt = None
-    if message_id:
-        stmnt = select(Generation).where(Generation.message_id == message_id).order_by(Generation.created_at.desc())
+    if lookup_message_id:
+        stmnt = select(Generation).where(Generation.message_id == lookup_message_id).order_by(Generation.created_at.desc())
     else:
         stmnt = select(Generation).where(Generation.user_id == interaction.user.id).order_by(Generation.created_at.desc())
 
@@ -295,6 +331,8 @@ async def regen(
         regen_params = previous_gen.regen_params()
         regen_params.update(params)
 
+
+    apply_server_prefs(interaction, regen_params)
     # This is also where more preference merging would go
     if recycle_seed is not None and not recycle_seed:
         regen_params['seed'] = -1
@@ -392,12 +430,15 @@ async def preferences(interaction: discord.Interaction):
 @client.tree.context_menu(name='AI-ify this bad boy')
 @default_ratelimiter
 async def ai_message_content(interaction: discord.Interaction, message: discord.Message):
-    prompt = message.clean_content
-    negative = "boring, dull, NSFW, porn, nudity"
+    params: GenerationParams = {
+        'prompt': message.clean_content,
+        'negative_prompt': "boring, dull, NSFW, porn, nudity",
+    }
+    apply_server_prefs(interaction, params)
 
-    await generation_interaction(interaction, prompt=prompt, negative_prompt=negative)
+    await generation_interaction(interaction, **params)
 
-def only_self_messages(f: callable):
+def only_self_messages(f: Callable):
     @wraps(f)
     async def wrapper(interaction: discord.Interaction, message: discord.Message):
         if message.author.id != client.user.id:
@@ -422,6 +463,7 @@ async def regen_with_new_seed(interaction: discord.Interaction, message: discord
             await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
             return
         regen_params = saved_generation.regen_params()
+        apply_server_prefs(interaction, regen_params)
 
     regen_params['seed'] = -1
     await generation_interaction(
@@ -444,6 +486,7 @@ async def regen_with_new_seed(interaction: discord.Interaction, message: discord
             await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
             return
         regen_params = saved_generation.regen_params()
+        apply_server_prefs(interaction, regen_params)
 
     regen_params['overlay'] = False
     await generation_interaction(
