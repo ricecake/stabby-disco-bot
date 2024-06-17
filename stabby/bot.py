@@ -463,7 +463,7 @@ async def regen_with_new_seed(interaction: discord.Interaction, message: discord
 # This context menu command only works on messages
 @client.tree.context_menu(name='Sans overlay')
 @default_ratelimiter
-async def regen_with_new_seed(interaction: discord.Interaction, message: discord.Message):
+async def regen_without_overlay(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
 
     regen_params = None
