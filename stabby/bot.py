@@ -39,7 +39,7 @@ prompt_grammar = grammar.Grammar(config.prompt_grammar)
 
 def apply_server_prefs(interaction: discord.Interaction, gen_params: GenerationParams):
     saved_server_prefs = ServerPreferences.get_server_preferences(server_id=interaction.guild_id)
-    if not gen_params['negative_prompt'] and saved_server_prefs.default_negative_prompt:
+    if not gen_params.get('negative_prompt') and saved_server_prefs.default_negative_prompt:
         gen_params['negative_prompt'] = saved_server_prefs.default_negative_prompt
     
     if saved_server_prefs.required_negative_prompt:
@@ -51,7 +51,7 @@ def apply_server_prefs(interaction: discord.Interaction, gen_params: GenerationP
         required_negative_tokens = set([ token.strip() for token in saved_server_prefs.required_negative_prompt.split(',') ])
         for required_token in required_negative_tokens:
             if required_token not in negative_prompt_tokens:
-                gen_params['negative_prompt'] = F"{gen_params['negative_prompt']}, {required_token}" 
+                gen_params['negative_prompt'] = F"{gen_params['negative_prompt']}, {required_token}" if gen_params.get('negative_prompt') else required_token 
 
     return gen_params
 
