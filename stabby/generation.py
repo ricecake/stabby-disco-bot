@@ -28,7 +28,7 @@ def gen_description(prompt):
 
 def prettify_params(params) -> str:
     filtered_kwargs = [
-        (key, value) for key, value in sorted(params.items()) if value is not None
+        (key, value) for key, value in params.items() if value is not None
     ]
 
     display = []
@@ -57,9 +57,9 @@ async def generate_ai_image(
     url = config.sd_host
 
     payload = {
-        "sampler_index": "DPM++ 2M",
         "prompt": prompt,
         "negative_prompt": negative_prompt,
+        "sampler_index": "DPM++ 2M",
         "steps": steps,
         "width": width,
         "height": height,

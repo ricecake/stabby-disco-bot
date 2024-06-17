@@ -11,7 +11,6 @@ from stabby import conf, generation, grammar
 from stabby.schema import db_session, Preferences, Generation, ServerPreferences
 from sqlalchemy import select
 
-
 http_client = None
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby')
@@ -29,20 +28,57 @@ async def interaction_must_reply(interaction: discord.Interaction, message: str,
     else:
         await interaction.followup.send(message, ephemeral=ephemeral, silent=silent)
 
+def tokenize_prompt(prompt: str) -> list[str]:
+    if prompt is None:
+        return []
+    return [s.strip() for s in prompt.split(',')]
+
+def merge_prompts(first: str, second: str) -> Optional[str]:
+    first_tokens = tokenize_prompt(first)
+    second_tokens = tokenize_prompt(second)
+
+    all_tokens = first_tokens + second_tokens
+    if len(all_tokens) == 0:
+        return None
+
+    return ', '.join(list(OrderedDict.fromkeys(first_tokens + second_tokens)))
+
+def apply_defaults(interaction: discord.Interaction, request_params: dict):
+    server_prefs = ServerPreferences.get_server_preferences(interaction.guild_id)
+    user_prefs = Preferences.get_user_preferences(interaction.user.id)
+
+    default_params = {}
+    global_defaults = config.global_defaults.model_dump()
+    server_defaults = server_prefs.get_defaults()
+    user_defaults = user_prefs.get_defaults()
+
+    for defs in (global_defaults, server_defaults, user_defaults):
+        default_params.update(defs)
+
+    return apply_default_params(request_params, default_params)
+
+def apply_default_params(request_params: dict, default_params: dict):
+    new_params = request_params.copy()
+    for field, value in default_params.items():
+        if new_params.get(field) is None:
+            new_params[field] = value
+
+    return new_params
+
 async def generation_interaction(
         interaction: discord.Interaction,
         prompt: str,
         negative_prompt: Optional[str] = None,
-        overlay: bool = True,
-        spoiler: bool = False,
-        tiling: bool = False,
-        restore_faces: bool = True,
-        use_refiner: bool = True,
-        width: int = 1024,
-        height: int = 1024,
-        seed: int = -1,
-        cfg_scale: float = 7.0,
-        steps: int = 20
+        overlay: Optional[bool] = None,
+        spoiler: Optional[bool] = None,
+        tiling: Optional[bool] = None,
+        restore_faces: Optional[bool] = None,
+        use_refiner: Optional[bool] = None,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        seed: Optional[int] = None,
+        cfg_scale: Optional[float] = None,
+        steps: Optional[int] = None,
     ) -> None:
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
@@ -50,18 +86,6 @@ async def generation_interaction(
         saved_server_prefs = ServerPreferences.get_server_preferences(interaction.guild_id)
         with db_session() as session:
             session.add(saved_server_prefs)
-
-            negative_prompt_components = []
-            if negative_prompt is not None:
-                negative_prompt_components.append(negative_prompt)
-            elif saved_server_prefs.default_negative_prompt is not None:
-                negative_prompt_components.append(saved_server_prefs.default_negative_prompt)
-
-            if saved_server_prefs.required_negative_prompt is not None:
-                negative_prompt_components.append(saved_server_prefs.required_negative_prompt)
-
-            negative_prompt = ', '.join(negative_prompt_components)
-
 
             gen_instance = Generation(
                 user_id=interaction.user.id,
@@ -81,8 +105,7 @@ async def generation_interaction(
             session.add(gen_instance)
             session.commit()
 
-            file, reprompt_struct = await generation.generate_ai_image(
-                http_client=http_client,
+            params = dict(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
                 overlay=overlay,
@@ -96,6 +119,14 @@ async def generation_interaction(
                 steps=steps,
                 use_refiner=use_refiner,
             )
+            new_params = apply_defaults(interaction, params)
+
+            new_params['negative_prompt'] = merge_prompts(new_params.get('negative_prompt'), saved_server_prefs.required_negative_prompt)
+
+            file, reprompt_struct = await generation.generate_ai_image(
+                http_client=http_client,
+                **new_params
+            )
             await interaction.followup.send(generation.prettify_params(reprompt_struct), ephemeral=True)
             message = await interaction.followup.send(
                 content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
@@ -108,10 +139,10 @@ async def generation_interaction(
             session.commit()
 
     except Exception as ex:
-        logger.info(ex)
+        logger.exception(ex)
         display = generation.prettify_params(dict(
             prompt=prompt,
-            negative=negative_prompt,
+            negative_prompt=negative_prompt,
             overlay=overlay,
         ))
         await interaction_must_reply(interaction, "Generation is offline right now, but I would have given you: {}".format(display), silent=True)
@@ -238,10 +269,10 @@ async def generate(
         interaction: discord.Interaction,
         prompt: str,
         negative_prompt: Optional[str] = None,
-        overlay: bool = True,
-        spoiler: bool = False,
-        tiling: bool = False,
-        restore_faces: bool = True
+        overlay: Optional[bool] = None,
+        spoiler: Optional[bool] = None,
+        tiling: Optional[bool] = None,
+        restore_faces: Optional[bool] = None,
     ):
     """Generates an image"""
     await generation_interaction(
@@ -312,7 +343,7 @@ async def regen(
             return
         
         regen_params = previous_gen.regen_params()
-        regen_params.update(params)
+        regen_params = apply_default_params(params, regen_params)
 
     # This is also where more preference merging would go
     if recycle_seed is not None and not recycle_seed:

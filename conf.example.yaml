@@ -10,3 +10,15 @@ artist_font: droid-sans-mono.ttf
 sd_host: http://127.0.0.1:7860
 guilds:
   - 0 # your guild/server id goes here
+global_defaults:
+  negative_prompt: null
+  overlay: True
+  spoiler: False
+  tiling: False
+  restore_faces: True
+  use_refiner: True
+  width: 1024
+  height: 1024
+  seed: -1
+  cfg_scale: 7.0
+  steps: 20

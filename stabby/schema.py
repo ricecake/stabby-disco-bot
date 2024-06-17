@@ -26,8 +26,13 @@ db_session = scoped_session(sessionmaker(autocommit=False,
 class Base(MappedAsDataclass, DeclarativeBase):
     query = db_session.query_property()
 
-    def as_dict(self):
+    def as_dict(self, omit=None):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+    
+    # def as_display_dict(self):
+    #     [c.is_not_distinct_from() for c in self.__table__.schema.]
+    #     pass
+
     
     def update_from_dict(self, updates: dict):
         for field, value in updates.items():
@@ -47,11 +52,12 @@ class Preferences(Base):
 
     user_id: Mapped[int] = mapped_column(nullable=False, default=None, unique=True)
 
-    overlay: Mapped[bool] = mapped_column(default=True)
-    spoiler: Mapped[bool] = mapped_column(default=False)
-    tiling: Mapped[bool] = mapped_column(default=False)
-    restore_faces: Mapped[bool] = mapped_column(default=True)
-    use_refiner: Mapped[bool] = mapped_column(default=True)
+    negative_prompt: Mapped[str] = mapped_column(default=None, nullable=True)
+    overlay: Mapped[bool]  = mapped_column(default=None, nullable=True)
+    spoiler: Mapped[bool]  = mapped_column(default=None, nullable=True)
+    tiling: Mapped[bool]  = mapped_column(default=None, nullable=True)
+    restore_faces: Mapped[bool]  = mapped_column(default=None, nullable=True)
+    use_refiner: Mapped[bool]  = mapped_column(default=None, nullable=True)
     regen_recycles_seed: Mapped[bool] = mapped_column(default=True)
     regen_preserves_overlay: Mapped[bool] = mapped_column(default=False)
 
@@ -65,6 +71,20 @@ class Preferences(Base):
                 session.commit()
             
             return saved_preferences
+    
+    def get_defaults(self) -> dict:
+        values = self.as_dict()
+        return {
+            field: value for field, value in values.items() if value is not None and field in [
+                'negative_prompt',
+                'overlay',
+                'spoiler',
+                'tiling',
+                'restore_faces',
+                'use_refiner',
+            ]
+        }
+
 
 class ServerPreferences(Base):
     __tablename__ = "server_preferences"
@@ -89,6 +109,13 @@ class ServerPreferences(Base):
                 session.commit()
             
             return saved_preferences
+        
+    def get_defaults(self) -> dict:
+        if self.default_negative_prompt is not None:
+            return {
+                'negative_prompt': self.default_negative_prompt,
+            }
+        return {}
 
 
 class Generation(Base):
