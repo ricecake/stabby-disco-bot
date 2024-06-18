@@ -341,6 +341,7 @@ async def regen(
 ):
     """Regenerate an image from a previous generation"""
     await interaction.response.defer(thinking=True, ephemeral=True)
+    image_message_id = None
     if message_id is not None:
         image_message_id = int(message_id)
 
