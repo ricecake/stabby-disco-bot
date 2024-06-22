@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from typing import Optional, TypeVar
-from sqlalchemy import func
+from sqlalchemy import UniqueConstraint, func
 from sqlalchemy import DateTime
 from sqlalchemy import create_engine
 from sqlalchemy import select
@@ -11,6 +11,7 @@ from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm.decl_api import DCTransformDeclarative
 
 from stabby import conf
 config = conf.load_conf()
@@ -26,6 +27,7 @@ db_session = scoped_session(sessionmaker(autocommit=False,
 T = TypeVar('T')
 NullMapped = Mapped[Optional[T]]
 
+StabbyTable = DCTransformDeclarative
 
 class Base(MappedAsDataclass, DeclarativeBase):
     query = db_session.query_property()
@@ -170,3 +172,22 @@ class Generation(Base):
                 'seed',
             ]
         }
+
+
+class Style(Base):
+    __tablename__ = "style"
+    __table_args__ = (UniqueConstraint("user_id", "name", name="style_user_name_idx"), )
+    id: Mapped[int] = mapped_column(
+        init=False, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), default=None,
+    )
+
+    user_id: Mapped[int] = mapped_column(nullable=False, default=None)
+
+    name: Mapped[str] = mapped_column(nullable=False, default=None)
+    prompt: NullMapped[str] = mapped_column(nullable=True, default=None)
+    negative_prompt: NullMapped[str] = mapped_column(nullable=True, default=None)
+    overlay: NullMapped[bool] = mapped_column(nullable=True, default=None)
+    tiling: NullMapped[bool] = mapped_column(nullable=True, default=None)
+    restore_faces: NullMapped[bool] = mapped_column(nullable=True, default=None)

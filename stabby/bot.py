@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, Literal, Optional, OrderedDict, List, Text
+from typing import Callable, Iterable, Literal, Optional, OrderedDict, List, Text, cast
 
 import logging
 import io
@@ -7,8 +7,8 @@ import discord
 from discord import File, app_commands
 from functools import wraps
 
-from stabby import conf, generation, grammar
-from stabby.schema import db_session, Preferences, Generation, ServerPreferences
+from stabby import conf, generation, grammar, schema
+from stabby.schema import Style, db_session, Preferences, Generation, ServerPreferences
 from sqlalchemy import select
 
 http_client: Optional[aiohttp.ClientSession] = None
@@ -88,6 +88,7 @@ async def generation_interaction(
     interaction: discord.Interaction,
     prompt: str,
     negative_prompt: Optional[str] = None,
+    style: Optional[str] = None,
     overlay: Optional[bool] = None,
     spoiler: Optional[bool] = None,
     tiling: Optional[bool] = None,
@@ -109,6 +110,19 @@ async def generation_interaction(
         saved_server_prefs = ServerPreferences.get_server_preferences(interaction.guild.id)
         with db_session() as session:
             session.add(saved_server_prefs)
+
+            saved_style = session.scalar(select(Style).where(Style.user_id == interaction.user.id).where(Style.name == style))
+            if saved_style:
+                if saved_style.prompt:
+                    prompt = cast(str, union_prompts(prompt, saved_style.prompt))
+                if saved_style.negative_prompt:
+                    negative_prompt = cast(str, union_prompts(negative_prompt, saved_style.negative_prompt))
+                if saved_style.tiling is not None and tiling is None:
+                    tiling = saved_style.tiling
+                if saved_style.overlay is not None and overlay is None:
+                    overlay = saved_style.overlay
+                if saved_style.restore_faces is not None and restore_faces is None:
+                    restore_faces = saved_style.restore_faces
 
             gen_instance = Generation(
                 user_id=interaction.user.id,
@@ -272,16 +286,17 @@ async def karma_wheel(interaction: discord.Interaction):
     await generation_interaction(interaction, prompt=prompt)
 
 
-def make_autocompleter(field: str) -> discord.app_commands.commands.AutocompleteCallback:
+def make_autocompleter(field: str, table: schema.StabbyTable = Generation) -> discord.app_commands.commands.AutocompleteCallback:
     async def autocompleter(interaction: discord.Interaction, current: str) -> List[discord.app_commands.models.Choice]:
         logger.info("Autocomplete [{}] [{}]".format(field, current))
-        column = getattr(Generation, field)
+        column = getattr(table, field)
+        created_at = getattr(table, 'created_at')
         with db_session() as session:
-            query = (select(Generation)
+            query = (select(table)
                      .where(column.is_not(None))
                      .where(column != '')
                      .where(column.icontains(current, autoescape=True))
-                     .order_by(Generation.created_at.desc()))
+                     .order_by(created_at.desc()))
 
             saved_generations = session.scalars(query)
             matches = OrderedDict()
@@ -305,6 +320,7 @@ def make_autocompleter(field: str) -> discord.app_commands.commands.Autocomplete
 @app_commands.describe(
     prompt="The prompt to generate an image based off of",
     negative_prompt="The negative prompt to keep things out of the image",
+    style="The user defined style to apply to the image",
     overlay="Should a text overlay be added with the image prompt?",
     tiling="Request that image tile",
     spoiler="Hide image behind spoiler filter",
@@ -313,12 +329,14 @@ def make_autocompleter(field: str) -> discord.app_commands.commands.Autocomplete
 @app_commands.autocomplete(
     prompt=make_autocompleter('prompt'),
     negative_prompt=make_autocompleter('negative_prompt'),
+    style=make_autocompleter('name', Style),
 )
 @default_ratelimiter
 async def generate(
     interaction: discord.Interaction,
     prompt: str,
     negative_prompt: Optional[str] = None,
+    style: Optional[str] = None,
     overlay: Optional[bool] = None,
     spoiler: Optional[bool] = None,
     tiling: Optional[bool] = None,
@@ -329,6 +347,7 @@ async def generate(
         interaction,
         prompt=prompt,
         negative_prompt=negative_prompt,
+        style=style,
         overlay=overlay,
         spoiler=spoiler,
         tiling=tiling,
@@ -420,8 +439,8 @@ async def regen(
     required_negative_prompt="A negative prompt to append to all prompts",
 )
 @app_commands.autocomplete(
-    default_negative_prompt=make_autocompleter('default_negative_prompt'),
-    required_negative_prompt=make_autocompleter('required_negative_prompt'),
+    default_negative_prompt=make_autocompleter('negative_prompt'),
+    required_negative_prompt=make_autocompleter('negative_prompt'),
 )
 @app_commands.default_permissions(administrator=True)
 @db_ratelimiter
@@ -543,6 +562,41 @@ async def unset_preferences(
         setattr(user_prefs, clear_field, None)
         session.commit()
     await interaction.followup.send(F"User preferences saved as: {user_prefs.as_dict()}", ephemeral=True)
+
+
+@client.tree.command()
+@app_commands.describe(
+    name='The name for the style'
+)
+@app_commands.autocomplete(
+    prompt=make_autocompleter('prompt'),
+    negative_prompt=make_autocompleter('negative_prompt'),
+)
+@db_ratelimiter
+async def create_style(
+        interaction: discord.Interaction,
+        name: str,
+        prompt: Optional[str] = None,
+        negative_prompt: Optional[str] = None,
+        overlay: Optional[bool] = None,
+        tiling: Optional[bool] = None,
+        restore_faces: Optional[bool] = None,
+) -> None:
+    """Create a new user defined style"""
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    with db_session() as session:
+        style = Style(
+            user_id=interaction.user.id,
+            name=name,
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            overlay=overlay,
+            tiling=tiling,
+            restore_faces=restore_faces,
+        )
+        session.add(style)
+        session.commit()
+    await interaction.followup.send(F"Style saved as: {style.as_dict()}", ephemeral=True)
 
 
 # This context menu command only works on messages
