@@ -29,13 +29,13 @@ def gen_description(prompt):
     desc = ""
     if len(parts) > 1:
         desc = " ".join(parts[1].split())
-        desc = ','.join([phrase.capitalize() for phrase in desc.split(',')])
+        desc = ', '.join([phrase.strip().capitalize() for phrase in desc.split(',')])
     return (title, desc)
 
 
 def prettify_params(params) -> str:
     filtered_kwargs = [
-        (key, value) for key, value in params.items() if value is not None
+        (key, value) for key, value in params.items() if value is not None and value != ''
     ]
 
     display = []

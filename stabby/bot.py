@@ -396,9 +396,17 @@ async def regen(
         regen_params = previous_gen.regen_params()
         regen_params = apply_default_params(params, regen_params)
 
-    # This is also where more preference merging would go
-    if recycle_seed is not None and not recycle_seed:
-        regen_params['seed'] = -1
+    user_prefs = Preferences.get_user_preferences(user_id=interaction.user.id)
+
+    if overlay is None and user_prefs.regen_preserves_overlay is not None and not user_prefs.regen_preserves_overlay:
+        regen_params['overlay'] = False
+
+    if recycle_seed is not None:
+        if not recycle_seed:
+            regen_params['seed'] = -1
+    elif user_prefs.regen_recycles_seed is not None:
+        if not user_prefs.regen_recycles_seed:
+            regen_params['seed'] = -1
 
     await generation_interaction(
         interaction,
@@ -466,11 +474,75 @@ async def unset_server_preferences(
 
 
 @client.tree.command()
-@app_commands.describe()
+@app_commands.describe(
+    negative_prompt='The default negative prompt you would like applied',
+    overlay='If your images should by default have a title overlay',
+    spoiler='If your images should be hidden by spoiler tags',
+    tiling='If your images should attempt to create a clean tiling',
+    restore_faces='If your images should run a face defect correction process',
+    use_refiner='If the images should have a few itterations of a refiner network run to increase fidelity',
+    regen_recycles_seed='If a regeneration request should default to using the same seed',
+    regen_preserves_overlay='If a regeneration request should use the same settings for overlay as the original',
+)
 @db_ratelimiter
-async def preferences(interaction: discord.Interaction):
-    """Function"""
-    await interaction.response.send_message('Poop', ephemeral=True)
+async def set_preferences(
+    interaction: discord.Interaction,
+    negative_prompt: Optional[str] = None,
+    overlay: Optional[bool] = None,
+    spoiler: Optional[bool] = None,
+    tiling: Optional[bool] = None,
+    restore_faces: Optional[bool] = None,
+    use_refiner: Optional[bool] = None,
+    regen_recycles_seed: Optional[bool] = None,
+    regen_preserves_overlay: Optional[bool] = None,
+):
+    """Set user specific defaults and policies for the bot to adhere to"""
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    params = {
+        field: value for field, value in dict(
+            negative_prompt=negative_prompt,
+            overlay=overlay,
+            spoiler=spoiler,
+            tiling=tiling,
+            restore_faces=restore_faces,
+            use_refiner=use_refiner,
+            regen_recycles_seed=regen_recycles_seed,
+            regen_preserves_overlay=regen_preserves_overlay,
+        ).items() if value is not None
+    }
+
+    user_prefs = Preferences.get_user_preferences(user_id=interaction.user.id)
+    with db_session() as session:
+        session.add(user_prefs)
+        user_prefs.update_from_dict(params)
+        session.commit()
+
+    await interaction.followup.send("Preferences updated to [{}]".format(user_prefs.as_dict()), ephemeral=True)
+
+@client.tree.command()
+@app_commands.describe(
+    clear_field='The server preference to clear'
+)
+@db_ratelimiter
+async def unset_preferences(
+        interaction: discord.Interaction,
+        clear_field: Literal['negative_prompt',
+                             'overlay',
+                             'spoiler',
+                             'tiling',
+                             'restore_faces',
+                             'use_refiner',
+                             'regen_recycles_seed',
+                             'regen_preserves_overlay']
+) -> None:
+    """Unset a user specific default or policies"""
+    await interaction.response.defer(thinking=True, ephemeral=True)
+    user_prefs = Preferences.get_user_preferences(user_id=interaction.user.id)
+    with db_session() as session:
+        session.add(user_prefs)
+        setattr(user_prefs, clear_field, None)
+        session.commit()
+    await interaction.followup.send(F"User preferences saved as: {user_prefs.as_dict()}", ephemeral=True)
 
 
 # This context menu command only works on messages
