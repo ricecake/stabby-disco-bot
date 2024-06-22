@@ -35,7 +35,7 @@ def tokenize_prompt(prompt: Optional[str]) -> list[str]:
     return [s.strip() for s in prompt.split(',')]
 
 
-def merge_prompts(first: Optional[str], second: Optional[str]) -> Optional[str]:
+def union_prompts(first: Optional[str], second: Optional[str]) -> Optional[str]:
     first_tokens = tokenize_prompt(first)
     second_tokens = tokenize_prompt(second)
 
@@ -134,7 +134,7 @@ async def generation_interaction(
             )
             new_params = apply_defaults(interaction, params)
 
-            new_params['negative_prompt'] = merge_prompts(new_params.get(
+            new_params['negative_prompt'] = union_prompts(new_params.get(
                 'negative_prompt'), saved_server_prefs.required_negative_prompt)
 
             file, reprompt_struct = await generation.generate_ai_image(
