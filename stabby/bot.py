@@ -56,18 +56,19 @@ def subtract_prompts(first: Optional[str], second: Optional[str]) -> Optional[st
     return rejoin_prompt_tokens(base_set)
 
 def apply_defaults(interaction: discord.Interaction, request_params: dict) -> dict:
-    if interaction.guild_id is None:
-        return request_params
-
-    server_prefs = ServerPreferences.get_server_preferences(
-        interaction.guild_id)
-    user_prefs = Preferences.get_user_preferences(interaction.user.id)
-
-    default_params = {}
     global_defaults = config.global_defaults.model_dump()
-    server_defaults = server_prefs.get_defaults()
+
+    if interaction.guild_id is not None:
+        server_prefs = ServerPreferences.get_server_preferences(
+            interaction.guild_id)
+        server_defaults = server_prefs.get_defaults()
+    else:
+        server_defaults = {}
+
+    user_prefs = Preferences.get_user_preferences(interaction.user.id)
     user_defaults = user_prefs.get_defaults()
 
+    default_params = {}
     for defs in (global_defaults, server_defaults, user_defaults):
         default_params.update(defs)
 
