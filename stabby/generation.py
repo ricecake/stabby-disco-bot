@@ -24,10 +24,12 @@ def gen_description(prompt):
 
     parts = prompt.split(',', 1)
     title = " ".join(parts[0].split())
+    title = title.title()
 
     desc = ""
     if len(parts) > 1:
         desc = " ".join(parts[1].split())
+        desc = ','.join([phrase.capitalize() for phrase in desc.split(',')])
     return (title, desc)
 
 

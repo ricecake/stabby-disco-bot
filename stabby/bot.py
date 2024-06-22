@@ -1,4 +1,4 @@
-from typing import Callable, Literal, Optional, OrderedDict
+from typing import Callable, Literal, Optional, OrderedDict, List
 
 import logging
 import io
@@ -46,9 +46,9 @@ def merge_prompts(first: Optional[str], second: Optional[str]) -> Optional[str]:
     return ', '.join(list(OrderedDict.fromkeys(first_tokens + second_tokens)))
 
 
-def apply_defaults(interaction: discord.Interaction, request_params: dict):
+def apply_defaults(interaction: discord.Interaction, request_params: dict) -> dict:
     if interaction.guild_id is None:
-        return
+        return request_params
 
     server_prefs = ServerPreferences.get_server_preferences(
         interaction.guild_id)
@@ -65,7 +65,7 @@ def apply_defaults(interaction: discord.Interaction, request_params: dict):
     return apply_default_params(request_params, default_params)
 
 
-def apply_default_params(request_params: dict, default_params: dict):
+def apply_default_params(request_params: dict, default_params: dict) -> dict:
     new_params = request_params.copy()
     for field, value in default_params.items():
         if new_params.get(field) is None:
@@ -200,6 +200,7 @@ async def on_guild_join(guild):
 
 @client.event
 async def on_ready():
+    assert client.user is not None
     logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
     global http_client
     http_client = aiohttp.ClientSession()
@@ -216,7 +217,8 @@ async def on_resumed():
 @client.event
 async def on_disconnect():
     logger.info("Handling disconnect")
-    await http_client.close()
+    if http_client is not None:
+        await http_client.close()
 
 
 @client.tree.command()
@@ -248,8 +250,8 @@ async def karma_wheel(interaction: discord.Interaction):
     await generation_interaction(interaction, prompt=prompt)
 
 
-def make_autocompleter(field: str):
-    async def autocompleter(interaction: discord.Interaction, current: str):
+def make_autocompleter(field: str) -> discord.app_commands.commands.AutocompleteCallback:
+    async def autocompleter(interaction: discord.Interaction, current: str) -> List[discord.app_commands.models.Choice]:
         logger.info("Autocomplete [{}] [{}]".format(field, current))
         column = getattr(Generation, field)
         with db_session() as session:
@@ -272,7 +274,7 @@ def make_autocompleter(field: str):
                 if len(matches) >= 25:
                     break
 
-            return matches.values()
+            return list(matches.values())
 
     return autocompleter
 
