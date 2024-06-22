@@ -1,4 +1,4 @@
-from typing import Callable, Literal, Optional, OrderedDict, List
+from typing import Callable, Iterable, Literal, Optional, OrderedDict, List, Text
 
 import logging
 import io
@@ -34,17 +34,26 @@ def tokenize_prompt(prompt: Optional[str]) -> list[str]:
         return []
     return [s.strip() for s in prompt.split(',')]
 
+def rejoin_prompt_tokens(tokens: Optional[Iterable[Text]]) -> Optional[Text]:
+    if tokens is None or not tokens:
+        return None
+    return ', '.join(tokens)
 
 def union_prompts(first: Optional[str], second: Optional[str]) -> Optional[str]:
     first_tokens = tokenize_prompt(first)
     second_tokens = tokenize_prompt(second)
 
-    all_tokens = first_tokens + second_tokens
-    if len(all_tokens) == 0:
-        return None
+    return rejoin_prompt_tokens(dict.fromkeys(first_tokens + second_tokens))
 
-    return ', '.join(list(OrderedDict.fromkeys(first_tokens + second_tokens)))
+def subtract_prompts(first: Optional[str], second: Optional[str]) -> Optional[str]:
+    first_tokens = tokenize_prompt(first)
+    second_tokens = tokenize_prompt(second)
 
+    base_set = dict.fromkeys(first_tokens)
+    for remove in second_tokens:
+        base_set.pop(remove, None)
+
+    return rejoin_prompt_tokens(base_set)
 
 def apply_defaults(interaction: discord.Interaction, request_params: dict) -> dict:
     if interaction.guild_id is None:
@@ -134,8 +143,20 @@ async def generation_interaction(
             )
             new_params = apply_defaults(interaction, params)
 
-            new_params['negative_prompt'] = union_prompts(new_params.get(
-                'negative_prompt'), saved_server_prefs.required_negative_prompt)
+            new_params['negative_prompt'] = subtract_prompts(
+                new_params.get('negative_prompt'),
+                new_params.get('prompt')
+            )
+
+            new_params['prompt'] = subtract_prompts(
+                new_params.get('prompt'),
+                saved_server_prefs.required_negative_prompt
+            )
+
+            new_params['negative_prompt'] = union_prompts(
+                new_params.get('negative_prompt'),
+                saved_server_prefs.required_negative_prompt
+            )
 
             file, reprompt_struct = await generation.generate_ai_image(
                 http_client=http_client,
