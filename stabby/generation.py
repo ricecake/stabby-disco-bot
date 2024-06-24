@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 import base64
 import json
 import re
@@ -10,40 +10,9 @@ from discord import File
 import logging
 
 from stabby import conf, image
+from stabby.text_utils import prompt_to_overlay, prettify_params
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby.generator')
-
-
-def gen_description(prompt):
-
-    prompt = re.sub(r':\s*[+-]?\d+(?:\.\d*)?\s*(?=[\)\]])', '', prompt)  # handle attention modifiers
-    prompt = re.sub(r'[ ]+', ' ', prompt)
-
-    for c in '[]()':
-        prompt = prompt.replace(c, '')
-
-    parts = prompt.split(',', 1)
-    title = " ".join(parts[0].split())
-    title = title.title()
-
-    desc = ""
-    if len(parts) > 1:
-        desc = " ".join(parts[1].split())
-        desc = ', '.join([phrase.strip().capitalize() for phrase in desc.split(',')])
-    return (title, desc)
-
-
-def prettify_params(params) -> str:
-    filtered_kwargs = [
-        (key, value) for key, value in params.items() if value is not None and value != ''
-    ]
-
-    display = []
-    for key, value in filtered_kwargs:
-        display_key = key.replace('_', ' ').capitalize()
-        display.append('{}: {}'.format(display_key, value))
-
-    return ', '.join(display)
 
 
 async def generate_ai_image(
@@ -59,7 +28,7 @@ async def generate_ai_image(
         height: int = 1024,
         seed: int = -1,
         cfg_scale: float = 7.0,
-        steps: int = 20):
+        steps: int = 20) -> tuple[File, dict[str, Any]]:
     url = config.sd_host
 
     payload = {
@@ -122,9 +91,9 @@ async def generate_ai_image(
         working_image = Image.open(image_bytes)
 
         if overlay:
-            title, desc = gen_description(prompt)
-            image.add_text_to_image(ImageDraw.Draw(
-                working_image, 'RGBA'), height, width, title, desc)
+            title, desc = prompt_to_overlay(prompt)
+            canvas = ImageDraw.Draw(working_image, 'RGBA')
+            image.add_text_to_image(canvas, height, width, title, desc)
 
         buf = io.BytesIO()
         working_image.save(buf, format='PNG')

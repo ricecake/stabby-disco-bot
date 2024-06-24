@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, Literal, Optional, OrderedDict, List, Text, cast
+from typing import Callable, Literal, Optional, OrderedDict, List, cast
 
 import logging
 import io
@@ -10,6 +10,11 @@ from functools import wraps
 from stabby import conf, generation, grammar, schema
 from stabby.schema import Style, db_session, Preferences, Generation, ServerPreferences
 from sqlalchemy import select
+
+import stabby.text_utils
+from stabby.text_utils import union_prompts
+from stabby.text_utils import subtract_prompts
+from stabby.text_utils import apply_default_params
 
 http_client: Optional[aiohttp.ClientSession] = None
 config = conf.load_conf()
@@ -29,32 +34,6 @@ async def interaction_must_reply(interaction: discord.Interaction, message: str,
         await interaction.followup.send(message, ephemeral=ephemeral, silent=silent)
 
 
-def tokenize_prompt(prompt: Optional[str]) -> list[str]:
-    if prompt is None:
-        return []
-    return [s.strip() for s in prompt.split(',')]
-
-def rejoin_prompt_tokens(tokens: Optional[Iterable[Text]]) -> Optional[Text]:
-    if tokens is None or not tokens:
-        return None
-    return ', '.join(tokens)
-
-def union_prompts(first: Optional[str], second: Optional[str]) -> Optional[str]:
-    first_tokens = tokenize_prompt(first)
-    second_tokens = tokenize_prompt(second)
-
-    return rejoin_prompt_tokens(dict.fromkeys(first_tokens + second_tokens))
-
-def subtract_prompts(first: Optional[str], second: Optional[str]) -> Optional[str]:
-    first_tokens = tokenize_prompt(first)
-    second_tokens = tokenize_prompt(second)
-
-    base_set = dict.fromkeys(first_tokens)
-    for remove in second_tokens:
-        base_set.pop(remove, None)
-
-    return rejoin_prompt_tokens(base_set)
-
 def apply_defaults(interaction: discord.Interaction, request_params: dict) -> dict:
     global_defaults = config.global_defaults.model_dump()
 
@@ -73,15 +52,6 @@ def apply_defaults(interaction: discord.Interaction, request_params: dict) -> di
         default_params.update(defs)
 
     return apply_default_params(request_params, default_params)
-
-
-def apply_default_params(request_params: dict, default_params: dict) -> dict:
-    new_params = request_params.copy()
-    for field, value in default_params.items():
-        if new_params.get(field) is None:
-            new_params[field] = value
-
-    return new_params
 
 
 async def generation_interaction(
@@ -177,7 +147,7 @@ async def generation_interaction(
                 http_client=http_client,
                 **new_params
             )
-            await interaction.followup.send(generation.prettify_params(reprompt_struct), ephemeral=True)
+            await interaction.followup.send(stabby.text_utils.prettify_params(reprompt_struct), ephemeral=True)
 
             message = await interaction.followup.send(
                 content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
@@ -193,7 +163,7 @@ async def generation_interaction(
 
     except Exception as ex:
         logger.exception(ex)
-        display = generation.prettify_params(dict(
+        display = stabby.text_utils.prettify_params(dict(
             prompt=prompt,
             negative_prompt=negative_prompt,
             overlay=overlay,
@@ -703,5 +673,5 @@ async def fetch_generation_params(interaction: discord.Interaction, message: dis
             await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
             return
 
-        display = generation.prettify_params(saved_generation.regen_params())
+        display = stabby.text_utils.prettify_params(saved_generation.regen_params())
         await interaction.followup.send(display)

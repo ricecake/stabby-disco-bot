@@ -1,10 +1,10 @@
 import unittest
 
-from stabby import generation
+from stabby import text_utils
 from tests.helpers import with_params
 
 
-class TestGeneration(unittest.TestCase):
+class TestTextUtils(unittest.TestCase):
 
     @with_params('Prompt test cases', [
         ('test', 'Test', ''),
@@ -16,6 +16,6 @@ class TestGeneration(unittest.TestCase):
         ('TEST THING, OTHER THING, YET AGAIN', 'Test The Thing', 'Other thing', 'Yet again'),
     ])
     def test_gen_description(self, prompt, title, description):
-        got_title, got_description = generation.gen_description(prompt)
+        got_title, got_description = text_utils.prompt_to_overlay(prompt)
         self.assertEqual(got_title, title)
         self.assertEqual(got_description, description)
