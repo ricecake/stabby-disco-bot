@@ -176,7 +176,6 @@ class Generation(Base):
 
 class Style(Base):
     __tablename__ = "style"
-    __table_args__ = (UniqueConstraint("user_id", "name", name="style_user_name_idx"), )
     id: Mapped[int] = mapped_column(
         init=False, primary_key=True, autoincrement=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -191,3 +190,5 @@ class Style(Base):
     overlay: NullMapped[bool] = mapped_column(nullable=True, default=None)
     tiling: NullMapped[bool] = mapped_column(nullable=True, default=None)
     restore_faces: NullMapped[bool] = mapped_column(nullable=True, default=None)
+
+    __table_args__ = (UniqueConstraint(user_id, name, name="style_user_name_idx"), )
