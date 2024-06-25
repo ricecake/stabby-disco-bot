@@ -1,4 +1,4 @@
-from typing import Callable, Literal, Optional, OrderedDict, List, cast
+from typing import Callable, Literal, Optional, List, cast
 
 import logging
 import io
@@ -9,7 +9,7 @@ from functools import wraps
 
 from stabby import conf, generation, grammar, schema
 from stabby.schema import Style, db_session, Preferences, Generation, ServerPreferences
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 import stabby.text_utils
 from stabby.text_utils import union_prompts
@@ -256,32 +256,29 @@ async def karma_wheel(interaction: discord.Interaction):
     await generation_interaction(interaction, prompt=prompt)
 
 
-def make_autocompleter(field: str, table: schema.StabbyTable = Generation) -> discord.app_commands.commands.AutocompleteCallback:
+def make_autocompleter(field: str, table: schema.StabbyTable = Generation, same_user: bool = True) -> discord.app_commands.commands.AutocompleteCallback:
     async def autocompleter(interaction: discord.Interaction, current: str) -> List[discord.app_commands.models.Choice]:
         logger.info("Autocomplete [{}] [{}]".format(field, current))
         column = getattr(table, field)
         created_at = getattr(table, 'created_at')
         with db_session() as session:
-            query = (select(table)
+            query = (select(column)
                      .where(column.is_not(None))
                      .where(column != '')
                      .where(column.icontains(current, autoescape=True))
-                     .order_by(created_at.desc()))
+                     .where(func.char_length(column) < 100)
+                     .group_by(column)
+                     .limit(25)
+                     .order_by(func.max(created_at).desc()))
 
-            saved_generations = session.scalars(query)
-            matches = OrderedDict()
+            if same_user:
+                user_id = getattr(table, 'user_id')
+                query = query.where(user_id == interaction.user.id)
 
-            for curr_generation in saved_generations:
-                value = getattr(curr_generation, field)
-                if len(value) > 100:
-                    continue
-
-                matches[value] = app_commands.Choice(name=value, value=value)
-
-                if len(matches) >= 25:
-                    break
-
-            return list(matches.values())
+            return [
+                app_commands.Choice(name=value, value=value)
+                for (value,) in list(session.execute(query))
+            ]
 
     return autocompleter
 
@@ -299,7 +296,7 @@ def make_autocompleter(field: str, table: schema.StabbyTable = Generation) -> di
 @app_commands.autocomplete(
     prompt=make_autocompleter('prompt'),
     negative_prompt=make_autocompleter('negative_prompt'),
-    style=make_autocompleter('name', Style),
+    style=make_autocompleter('name', Style, same_user=True),
 )
 @default_ratelimiter
 async def generate(
