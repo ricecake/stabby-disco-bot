@@ -11,12 +11,12 @@ from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.orm.decl_api import DCTransformDeclarative
-
+from sqlalchemy.ext.declarative import declared_attr
 from stabby import conf
+# from sqlalchemy.orm import declarative_base
+
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby.schema')
-
 
 engine = create_engine('sqlite:///stabby-disco.db', echo=False)
 db_session = scoped_session(sessionmaker(autocommit=False,
@@ -27,10 +27,18 @@ db_session = scoped_session(sessionmaker(autocommit=False,
 T = TypeVar('T')
 NullMapped = Mapped[Optional[T]]
 
-StabbyTable = DCTransformDeclarative
+class StabbyTable(DeclarativeBase, MappedAsDataclass):
+    @declared_attr.directive
+    def __tablename__(cls) -> str:
+        name = cls.__name__
+        first = name[0].lower()
+        return first + "".join("_" + c.lower() if c.isupper() else c for c in name[1:])
 
-class Base(MappedAsDataclass, DeclarativeBase):
-    query = db_session.query_property()
+    id: Mapped[int] = mapped_column(
+        init=False, primary_key=True, autoincrement=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), default=None,
+    )
 
     def as_dict(self, omit=None):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
@@ -43,19 +51,16 @@ class Base(MappedAsDataclass, DeclarativeBase):
         for field, value in updates.items():
             setattr(self, field, value)
 
+    @classmethod
+    def autocomplete_formatter(cls, field: str, value: T) -> tuple[T, T]:
+        return value, value
+
 
 def init_db():
-    Base.metadata.create_all(bind=engine)
+    StabbyTable.metadata.create_all(bind=engine)
 
 
-class Preferences(Base):
-    __tablename__ = "preferences"
-    id: Mapped[int] = mapped_column(
-        init=False, primary_key=True, autoincrement=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=None,
-    )
-
+class Preferences(StabbyTable):
     user_id: Mapped[int] = mapped_column(
         nullable=False, default=None, unique=True)
 
@@ -94,14 +99,7 @@ class Preferences(Base):
         }
 
 
-class ServerPreferences(Base):
-    __tablename__ = "server_preferences"
-    id: Mapped[int] = mapped_column(
-        init=False, primary_key=True, autoincrement=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=None,
-    )
-
+class ServerPreferences(StabbyTable):
     server_id: Mapped[int] = mapped_column(
         nullable=False, default=None, unique=True)
 
@@ -130,14 +128,7 @@ class ServerPreferences(Base):
         return {}
 
 
-class Generation(Base):
-    __tablename__ = "generation"
-    id: Mapped[int] = mapped_column(
-        init=False, primary_key=True, autoincrement=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=None,
-    )
-
+class Generation(StabbyTable):
     user_id: Mapped[int] = mapped_column(nullable=False, default=None)
     message_id: Mapped[int] = mapped_column(nullable=True, default=None)
 
@@ -174,14 +165,7 @@ class Generation(Base):
         }
 
 
-class Style(Base):
-    __tablename__ = "style"
-    id: Mapped[int] = mapped_column(
-        init=False, primary_key=True, autoincrement=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=None,
-    )
-
+class Style(StabbyTable):
     user_id: Mapped[int] = mapped_column(nullable=False, default=None)
 
     name: Mapped[str] = mapped_column(nullable=False, default=None)

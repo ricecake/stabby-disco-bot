@@ -1,4 +1,4 @@
-from typing import Callable, Literal, Optional, List, cast
+from typing import Callable, Literal, Optional, List, cast, Type
 
 import logging
 import io
@@ -256,9 +256,8 @@ async def karma_wheel(interaction: discord.Interaction):
     await generation_interaction(interaction, prompt=prompt)
 
 
-def make_autocompleter(field: str, table: schema.StabbyTable = Generation, same_user: bool = True) -> discord.app_commands.commands.AutocompleteCallback:
+def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation, same_user: bool = False) -> discord.app_commands.commands.AutocompleteCallback:
     async def autocompleter(interaction: discord.Interaction, current: str) -> List[discord.app_commands.models.Choice]:
-        logger.info("Autocomplete [{}] [{}]".format(field, current))
         column = getattr(table, field)
         created_at = getattr(table, 'created_at')
         with db_session() as session:
@@ -275,10 +274,12 @@ def make_autocompleter(field: str, table: schema.StabbyTable = Generation, same_
                 user_id = getattr(table, 'user_id')
                 query = query.where(user_id == interaction.user.id)
 
-            return [
-                app_commands.Choice(name=value, value=value)
-                for (value,) in list(session.execute(query))
-            ]
+            results = []
+            for (value,) in list(session.execute(query)):
+                (name, after_value) = table.autocomplete_formatter(field=field, value=value)
+                results.append(app_commands.Choice(name=name, value=after_value))
+
+            return results
 
     return autocompleter
 
