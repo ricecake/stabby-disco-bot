@@ -435,7 +435,7 @@ async def set_server_preferences(
         saved_server_prefs.update_from_dict(settings)
         session.commit()
 
-    await interaction.followup.send(F"Server [{interaction.guild.name}] preferences saved as: {saved_server_prefs.as_dict()}")
+    await interaction.followup.send(F"Server [{interaction.guild.name}] preferences saved as: {saved_server_prefs}")
 
 
 @client.tree.command()
@@ -457,7 +457,7 @@ async def unset_server_preferences(
         session.add(saved_server_prefs)
         setattr(saved_server_prefs, clear_field, None)
         session.commit()
-    await interaction.followup.send(F"Server preferences saved as: {saved_server_prefs.as_dict()}")
+    await interaction.followup.send(F"Server preferences saved as: {saved_server_prefs}")
 
 
 @client.tree.command()
@@ -504,7 +504,7 @@ async def set_preferences(
         user_prefs.update_from_dict(params)
         session.commit()
 
-    await interaction.followup.send("Preferences updated to [{}]".format(user_prefs.as_dict()), ephemeral=True)
+    await interaction.followup.send("Preferences updated to [{}]".format(user_prefs), ephemeral=True)
 
 @client.tree.command()
 @app_commands.describe(
@@ -529,7 +529,7 @@ async def unset_preferences(
         session.add(user_prefs)
         setattr(user_prefs, clear_field, None)
         session.commit()
-    await interaction.followup.send(F"User preferences saved as: {user_prefs.as_dict()}", ephemeral=True)
+    await interaction.followup.send(F"User preferences saved as: {user_prefs}", ephemeral=True)
 
 
 @client.tree.command()
@@ -564,7 +564,7 @@ async def create_style(
         )
         session.add(style)
         session.commit()
-    await interaction.followup.send(F"Style saved as: {style.as_dict()}", ephemeral=True)
+    await interaction.followup.send(F"Style saved as: {style}", ephemeral=True)
 
 
 # This context menu command only works on messages

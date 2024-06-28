@@ -35,17 +35,13 @@ class StabbyTable(DeclarativeBase, MappedAsDataclass):
         return first + "".join("_" + c.lower() if c.isupper() else c for c in name[1:])
 
     id: Mapped[int] = mapped_column(
-        init=False, primary_key=True, autoincrement=True)
+        init=False, primary_key=True, autoincrement=True, repr=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=None,
+        DateTime(timezone=True), server_default=func.now(), default=None, repr=False
     )
 
     def as_dict(self, omit=None):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-
-    # def as_display_dict(self):
-    #     [c.is_not_distinct_from() for c in self.__table__.schema.]
-    #     pass
 
     def update_from_dict(self, updates: dict):
         for field, value in updates.items():
@@ -62,7 +58,7 @@ def init_db():
 
 class Preferences(StabbyTable):
     user_id: Mapped[int] = mapped_column(
-        nullable=False, default=None, unique=True)
+        nullable=False, default=None, unique=True, repr=False)
 
     negative_prompt: NullMapped[str] = mapped_column(default=None, nullable=True)
     overlay: NullMapped[bool] = mapped_column(default=None, nullable=True)
@@ -101,7 +97,7 @@ class Preferences(StabbyTable):
 
 class ServerPreferences(StabbyTable):
     server_id: Mapped[int] = mapped_column(
-        nullable=False, default=None, unique=True)
+        nullable=False, default=None, unique=True, repr=False)
 
     default_negative_prompt: NullMapped[str] = mapped_column(
         default=None, nullable=True)
@@ -129,8 +125,8 @@ class ServerPreferences(StabbyTable):
 
 
 class Generation(StabbyTable):
-    user_id: Mapped[int] = mapped_column(nullable=False, default=None)
-    message_id: Mapped[int] = mapped_column(nullable=True, default=None)
+    user_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False)
+    message_id: Mapped[int] = mapped_column(nullable=True, default=None, repr=False)
 
     prompt: Mapped[str] = mapped_column(nullable=False, default=None)
     negative_prompt: NullMapped[str] = mapped_column(nullable=True, default=None)
@@ -166,7 +162,7 @@ class Generation(StabbyTable):
 
 
 class Style(StabbyTable):
-    user_id: Mapped[int] = mapped_column(nullable=False, default=None)
+    user_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False)
 
     name: Mapped[str] = mapped_column(nullable=False, default=None)
     prompt: NullMapped[str] = mapped_column(nullable=True, default=None)
