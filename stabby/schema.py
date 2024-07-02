@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import fields
 import logging
 from datetime import datetime
 from typing import Optional, TypeVar
@@ -12,8 +13,7 @@ from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declared_attr
-from stabby import conf
-# from sqlalchemy.orm import declarative_base
+from stabby import conf, text_utils
 
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby.schema')
@@ -27,7 +27,7 @@ db_session = scoped_session(sessionmaker(autocommit=False,
 T = TypeVar('T')
 NullMapped = Mapped[Optional[T]]
 
-class StabbyTable(DeclarativeBase, MappedAsDataclass):
+class StabbyTable(DeclarativeBase, MappedAsDataclass, repr=False):
     @declared_attr.directive
     def __tablename__(cls) -> str:
         name = cls.__name__
@@ -40,8 +40,22 @@ class StabbyTable(DeclarativeBase, MappedAsDataclass):
         DateTime(timezone=True), server_default=func.now(), default=None, repr=False
     )
 
-    def as_dict(self, omit=None):
-        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+    @classmethod
+    def pretty_classname(cls):
+        return cls.__tablename__.replace('_', ' ').title()
+
+    @classmethod
+    def display_fields(cls):
+        return [f.name for f in fields(cls) if f.repr]
+
+    def as_dict(self, only=None):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns if (c.name in only if only else True)}
+
+    def __repr__(self) -> str:
+        classname = type(self).pretty_classname()
+        display_fields = type(self).display_fields()
+        data = self.as_dict(only=display_fields)
+        return "{}: {}".format(classname, text_utils.prettify_params(data))
 
     def update_from_dict(self, updates: dict):
         for field, value in updates.items():
