@@ -224,7 +224,7 @@ async def check_server_status():
         for channel_id in config.status_notify:
             channel = client.get_channel(channel_id)
             if channel:
-                await channel.send("Generation is now {}".format("available" if available else "unavailable"), silent=True)  # type: ignore
+                await channel.send("Generation is now {}".format("available" if server_status.available else "unavailable"), silent=True)  # type: ignore
 
 
 @client.event
@@ -680,7 +680,7 @@ async def toggle_server_online(interaction: discord.Interaction):
             for channel_id in config.status_notify:
                 channel = client.get_channel(channel_id)
                 if channel:
-                    await channel.send("Generation is now {}".format("available" if available else "unavailable"), silent=True)  # type: ignore
+                    await channel.send("Generation is now {}".format("available" if server_status.available else "unavailable"), silent=True)  # type: ignore
 
 
 @client.tree.command()
