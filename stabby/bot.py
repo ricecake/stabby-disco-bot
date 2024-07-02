@@ -220,7 +220,7 @@ async def check_server_status():
         server_status.observed_online = online
 
     if server_status.available != available:
-        logger.info(f"Server availability changed: available={available}")
+        logger.info(f"Server availability changed: available={server_status.available}")
         for channel_id in config.status_notify:
             channel = client.get_channel(channel_id)
             if channel:
@@ -677,7 +677,7 @@ async def toggle_server_online(interaction: discord.Interaction):
         server_status.manually_disabled = not server_status.manually_disabled
         await interaction.response.send_message("Server status is now: disabled={}".format(server_status.manually_disabled), silent=True, ephemeral=True)
         if server_status.available != available:
-            logger.info(f"Server availability changed: available={available}")
+            logger.info(f"Server availability changed: available={server_status.available}")
             for channel_id in config.status_notify:
                 channel = client.get_channel(channel_id)
                 if channel:
