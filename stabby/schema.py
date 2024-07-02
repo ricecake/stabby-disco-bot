@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import fields
+import enum
 import logging
 from datetime import datetime
 from typing import Optional, TypeVar
@@ -186,3 +187,17 @@ class Style(StabbyTable):
     restore_faces: NullMapped[bool] = mapped_column(nullable=True, default=None)
 
     __table_args__ = (UniqueConstraint(user_id, name, name="style_user_name_idx"), )
+
+
+ServerStatus = enum.Enum('ServerStatus', [
+    'Online',
+    'Offline',
+    'Unknown',
+])
+
+
+class GenerationServer(StabbyTable):
+    owner_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False)
+
+    token: Mapped[str] = mapped_column(nullable=False, default=None, repr=False)
+    status: Mapped[ServerStatus] = mapped_column(nullable=False, default=None)

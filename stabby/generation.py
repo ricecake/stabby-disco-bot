@@ -1,3 +1,4 @@
+import dataclasses
 from typing import Any, Optional
 import base64
 import json
@@ -14,6 +15,23 @@ from stabby.text_utils import prompt_to_overlay, prettify_params
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby.generator')
 
+@dataclasses.dataclass
+class ServerStatus:
+    observed_online: bool = False
+    manually_disabled: bool = False
+
+    @property
+    def available(self) -> bool:
+        return self.observed_online and not self.manually_disabled
+
+
+async def ping_server(http_client: aiohttp.ClientSession) -> bool:
+    url = config.sd_host
+    try:
+        async with http_client.head(url, timeout=10) as response:
+            return response.status in (200, 204)
+    except Exception:
+        return False
 
 async def generate_ai_image(
         http_client: aiohttp.ClientSession,

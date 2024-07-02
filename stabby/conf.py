@@ -24,10 +24,12 @@ class Conf(pydantic.BaseModel):
     token: str
     karma_grammar: str
     prompt_grammar: str
+    owner_id: int
     title_font: str = pydantic.Field(default='droid-sans-mono.ttf')
     artist_font: str = pydantic.Field(default='droid-sans-mono.ttf')
     sd_host: str = pydantic.Field(default='http://127.0.0.1:7860')
     guilds: list[int] = pydantic.Field(default_factory=lambda: list())
+    status_notify: list[int] = pydantic.Field(default_factory=lambda: list())
     ratelimit_count: int = pydantic.Field(default=1)
     ratelimit_window: float = pydantic.Field(default=20.0)
     global_defaults: GlobalDefaults

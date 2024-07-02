@@ -5,6 +5,7 @@ import io
 import aiohttp
 import discord
 from discord import File, app_commands
+from discord.ext import tasks
 from functools import wraps
 
 from stabby import conf, generation, grammar, schema
@@ -27,6 +28,7 @@ default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, confi
 db_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count * 10, config.ratelimit_window)
 ephemeral_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count * 30, config.ratelimit_window)
 
+server_status = generation.ServerStatus()
 
 async def interaction_must_reply(interaction: discord.Interaction, message: str, ephemeral: bool = True, silent: bool = True):
     if not interaction.response.is_done():
@@ -112,6 +114,15 @@ async def generation_interaction(
             )
             session.add(gen_instance)
             session.commit()
+
+            if not server_status.available:
+                display = stabby.text_utils.prettify_params(dict(
+                    prompt=prompt,
+                    negative_prompt=negative_prompt,
+                    overlay=overlay,
+                ))
+                await interaction_must_reply(interaction, "Generation is offline right now. I've saved `{}` for later.".format(display), silent=True)
+                return
 
             params = dict(
                 prompt=prompt,
@@ -200,6 +211,22 @@ class StabbyDiscoBot(discord.Client):
 client = StabbyDiscoBot()
 
 
+@tasks.loop(seconds=5)
+async def check_server_status():
+    available = server_status.available
+    online = await generation.ping_server(http_client) if http_client else False
+    if online != server_status.observed_online:
+        logger.info(f"Server status changed: online={online}")
+        server_status.observed_online = online
+
+    if server_status.available != available:
+        logger.info(f"Server availability changed: available={available}")
+        for channel_id in config.status_notify:
+            channel = client.get_channel(channel_id)
+            if channel:
+                await channel.send("Generation is now {}".format("available" if available else "unavailable"), silent=True)  # type: ignore
+
+
 @client.event
 async def on_guild_join(guild):
     logger.info("Joined guild")
@@ -211,6 +238,7 @@ async def on_ready():
     logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
     global http_client
     http_client = aiohttp.ClientSession()
+    check_server_status.start()
     logger.info('------')
 
 
@@ -635,6 +663,24 @@ async def unset_preferences(
         setattr(user_prefs, clear_field, None)
         session.commit()
     await interaction.followup.send(F"User preferences saved as: {user_prefs}", ephemeral=True)
+
+
+@client.tree.command()
+@db_ratelimiter
+async def toggle_server_online(interaction: discord.Interaction):
+    uid = interaction.user.id
+    if uid != config.owner_id:
+        await interaction.response.send_message("You don't seem to have a generation server...", silent=True, ephemeral=True)
+    else:
+        available = server_status.available
+        server_status.manually_disabled = not server_status.manually_disabled
+        await interaction.response.send_message("Server status is now: disabled={}".format(server_status.manually_disabled), silent=True, ephemeral=True)
+        if server_status.available != available:
+            logger.info(f"Server availability changed: available={available}")
+            for channel_id in config.status_notify:
+                channel = client.get_channel(channel_id)
+                if channel:
+                    await channel.send("Generation is now {}".format("available" if available else "unavailable"), silent=True)  # type: ignore
 
 
 @client.tree.command()
