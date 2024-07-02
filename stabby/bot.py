@@ -668,6 +668,7 @@ async def unset_preferences(
 @client.tree.command()
 @db_ratelimiter
 async def toggle_server_online(interaction: discord.Interaction):
+    """Toggle the availability of owned generation server"""
     uid = interaction.user.id
     if uid != config.owner_id:
         await interaction.response.send_message("You don't seem to have a generation server...", silent=True, ephemeral=True)
