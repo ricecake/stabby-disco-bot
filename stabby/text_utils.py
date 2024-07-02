@@ -1,3 +1,4 @@
+import random
 import re
 from typing import Iterable, Text, Optional
 
@@ -71,3 +72,13 @@ def apply_default_params(request_params: dict, default_params: dict) -> dict:
             new_params[field] = value
 
     return new_params
+
+
+def randomized_template(input: dict[str, Optional[str]], template: dict[str, list[str]], fill: bool = True) -> dict[str, str]:
+    output = dict()
+    for field, value in input.items():
+        if value is not None:
+            output[field] = value
+        elif fill:
+            output[field] = random.choice(template.get(field, []))
+    return output

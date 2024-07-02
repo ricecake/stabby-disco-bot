@@ -52,9 +52,9 @@ class Grammar():
                 # extra space for bracket
                 self._sentence_generator(s, sentence)
 
-    def generate(self) -> str:
+    def generate(self, start='ROOT') -> str:
         sentence: list = []
-        self._sentence_generator('ROOT', sentence)
+        self._sentence_generator(start, sentence)
         text = ' '.join(sentence)
         text = re.sub(r'[ ]+', ' ', text)
         text = re.sub(r'([\[({])\s+', r'\1', text)
