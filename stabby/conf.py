@@ -1,3 +1,4 @@
+import enum
 from typing import Optional
 import yaml
 import pydantic
@@ -19,15 +20,24 @@ class GlobalDefaults(pydantic.BaseModel):
     steps: int = 20
 
 
+RunMode = enum.Enum('RunMode', [
+    'local',
+    'remote',
+    'hybrid',
+])
+
 class Conf(pydantic.BaseModel):
     invite_url: str
     token: str
     karma_grammar: str
     prompt_grammar: str
     owner_id: int
+    mode: RunMode = pydantic.Field(default=RunMode.local)
     title_font: str = pydantic.Field(default='droid-sans-mono.ttf')
     artist_font: str = pydantic.Field(default='droid-sans-mono.ttf')
     sd_host: str = pydantic.Field(default='http://127.0.0.1:7860')
+    listen_host: str = '0.0.0.0'
+    listen_port: int = 8765
     guilds: list[int] = pydantic.Field(default_factory=lambda: list())
     status_notify: list[int] = pydantic.Field(default_factory=lambda: list())
     ratelimit_count: int = pydantic.Field(default=1)

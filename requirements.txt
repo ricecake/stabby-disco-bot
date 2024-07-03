@@ -5,3 +5,4 @@ pillow
 aiohttp[speedups]
 pydantic
 sqlalchemy
+websockets
