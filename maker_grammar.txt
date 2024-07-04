@@ -2056,7 +2056,6 @@
 1 NOUN ad
 1 NOUN address
 1 NOUN adult
-1 NOUN advertising
 1 NOUN agency
 1 NOUN agent
 1 NOUN agreement
@@ -2071,7 +2070,6 @@
 1 NOUN answer
 1 NOUN anxiety
 1 NOUN anybody
-1 NOUN anything
 1 NOUN apartment
 1 NOUN apple
 1 NOUN application
@@ -2110,7 +2108,6 @@
 1 NOUN bed
 1 NOUN bedroom
 1 NOUN beer
-1 NOUN being
 1 NOUN bell
 1 NOUN belt
 1 NOUN bench
@@ -2157,7 +2154,6 @@
 1 NOUN buddy
 1 NOUN budget
 1 NOUN bug
-1 NOUN building
 1 NOUN bunch
 1 NOUN bus
 1 NOUN business
@@ -2349,7 +2345,6 @@
 1 NOUN drama
 1 NOUN draw
 1 NOUN drawer
-1 NOUN drawing
 1 NOUN dream
 1 NOUN dress
 1 NOUN drink
@@ -2390,7 +2385,6 @@
 1 NOUN energy
 1 NOUN engine
 1 NOUN engineer
-1 NOUN engineering
 1 NOUN entertainment
 1 NOUN enthusiasm
 1 NOUN entrance
@@ -2405,7 +2399,6 @@
 1 NOUN establishment
 1 NOUN estate
 1 NOUN estimate
-1 NOUN evening
 1 NOUN event
 1 NOUN evidence
 1 NOUN exam
@@ -2445,7 +2438,6 @@
 1 NOUN feed
 1 NOUN feedback
 1 NOUN feel
-1 NOUN feeling
 1 NOUN female
 1 NOUN few
 1 NOUN field
@@ -2455,13 +2447,10 @@
 1 NOUN fill
 1 NOUN film
 1 NOUN final
-1 NOUN finance
-1 NOUN finding
-1 NOUN finger
+1 NOUN financeer
 1 NOUN finish
 1 NOUN fire
 1 NOUN fish
-1 NOUN fishing
 1 NOUN fix
 1 NOUN flight
 1 NOUN floor
@@ -2470,7 +2459,6 @@
 1 NOUN fly
 1 NOUN focus
 1 NOUN fold
-1 NOUN following
 1 NOUN food
 1 NOUN foot
 1 NOUN football
@@ -2554,7 +2542,6 @@
 1 NOUN hate
 1 NOUN head
 1 NOUN health
-1 NOUN hearing
 1 NOUN heart
 1 NOUN heat
 1 NOUN heavy
@@ -2585,7 +2572,6 @@
 1 NOUN hotel
 1 NOUN hour
 1 NOUN house
-1 NOUN housing
 1 NOUN human
 1 NOUN hunt
 1 NOUN hurry
@@ -2594,8 +2580,6 @@
 1 NOUN ice
 1 NOUN idea
 1 NOUN ideal
-1 NOUN if
-1 NOUN illegal
 1 NOUN image
 1 NOUN imagination
 1 NOUN impact
@@ -2655,7 +2639,6 @@
 1 NOUN kid
 1 NOUN kill
 1 NOUN kind
-1 NOUN king
 1 NOUN kiss
 1 NOUN kitchen
 1 NOUN kitten
@@ -2679,7 +2662,6 @@
 1 NOUN lead
 1 NOUN leader
 1 NOUN leadership
-1 NOUN leading
 1 NOUN league
 1 NOUN leather
 1 NOUN leave
@@ -2702,7 +2684,6 @@
 1 NOUN list
 1 NOUN listen
 1 NOUN literature
-1 NOUN living
 1 NOUN load
 1 NOUN loan
 1 NOUN lobster
@@ -2736,7 +2717,6 @@
 1 NOUN march
 1 NOUN mark
 1 NOUN market
-1 NOUN marketing
 1 NOUN marriage
 1 NOUN master
 1 NOUN match
@@ -2747,14 +2727,12 @@
 1 NOUN maximum
 1 NOUN maybe
 1 NOUN meal
-1 NOUN meaning
 1 NOUN measurement
 1 NOUN meat
 1 NOUN media
 1 NOUN medicine
 1 NOUN medium
 1 NOUN meet
-1 NOUN meeting
 1 NOUN member
 1 NOUN membership
 1 NOUN memory
@@ -2770,7 +2748,6 @@
 1 NOUN milk
 1 NOUN mind
 1 NOUN mine
-1 NOUN minimum
 1 NOUN minor
 1 NOUN minute
 1 NOUN mirror
@@ -2788,7 +2765,6 @@
 1 NOUN monitor
 1 NOUN month
 1 NOUN mood
-1 NOUN morning
 1 NOUN mortgage
 1 NOUN most
 1 NOUN mother
@@ -2829,7 +2805,6 @@
 1 NOUN north
 1 NOUN nose
 1 NOUN note
-1 NOUN nothing
 1 NOUN notice
 1 NOUN novel
 1 NOUN number
@@ -2844,7 +2819,6 @@
 1 NOUN official
 1 NOUN oil
 1 NOUN one
-1 NOUN opening
 1 NOUN operation
 1 NOUN opinion
 1 NOUN opportunity
@@ -2866,15 +2840,12 @@
 1 NOUN page
 1 NOUN pain
 1 NOUN paint
-1 NOUN painting
 1 NOUN pair
 1 NOUN panic
 1 NOUN paper
 1 NOUN parent
 1 NOUN park
-1 NOUN parking
 1 NOUN part
-1 NOUN particular
 1 NOUN partner
 1 NOUN party
 1 NOUN pass
@@ -3023,7 +2994,6 @@
 1 NOUN reach
 1 NOUN reaction
 1 NOUN read
-1 NOUN reading
 1 NOUN reality
 1 NOUN reason
 1 NOUN reception
@@ -3031,7 +3001,6 @@
 1 NOUN recognition
 1 NOUN recommendation
 1 NOUN record
-1 NOUN recording
 1 NOUN recover
 1 NOUN red
 1 NOUN reference
@@ -3084,7 +3053,6 @@
 1 NOUN rice
 1 NOUN rich
 1 NOUN ride
-1 NOUN ring
 1 NOUN rip
 1 NOUN rise
 1 NOUN risk
@@ -3141,9 +3109,7 @@
 1 NOUN sign
 1 NOUN signal
 1 NOUN signature
-1 NOUN silver
-1 NOUN singer
-1 NOUN single
+1 NOUN silvererle
 1 NOUN sink
 1 NOUN sister
 1 NOUN size
@@ -3165,14 +3131,12 @@
 1 NOUN speaker
 1 NOUN specialist
 1 NOUN speech
-1 NOUN speed
 1 NOUN spell
 1 NOUN spend
 1 NOUN spirit
 1 NOUN spot
 1 NOUN spray
 1 NOUN spread
-1 NOUN spring
 1 NOUN square
 1 NOUN squirrel
 1 NOUN stable
@@ -3193,7 +3157,6 @@
 1 NOUN storm
 1 NOUN stranger
 1 NOUN street
-1 NOUN string
 1 NOUN strip
 1 NOUN structure
 1 NOUN student
@@ -3213,7 +3176,6 @@
 1 NOUN survey
 1 NOUN suspect
 1 NOUN sweet
-1 NOUN swing
 1 NOUN switch
 1 NOUN system
 1 NOUN table
@@ -3225,7 +3187,6 @@
 1 NOUN tea
 1 NOUN teach
 1 NOUN teacher
-1 NOUN teaching
 1 NOUN team
 1 NOUN tear
 1 NOUN telephone
@@ -3234,7 +3195,6 @@
 1 NOUN tennis racket
 1 NOUN test
 1 NOUN text
-1 NOUN thing
 1 NOUN throat
 1 NOUN ticket
 1 NOUN tie
@@ -3278,13 +3238,11 @@
 1 NOUN wave
 1 NOUN wealth
 1 NOUN web
-1 NOUN wedding
 1 NOUN western
 1 NOUN wheel
 1 NOUN wife
 1 NOUN window
 1 NOUN wine
-1 NOUN wing
 1 NOUN winner
 1 NOUN witness
 1 NOUN woman
