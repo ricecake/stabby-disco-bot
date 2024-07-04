@@ -1,3 +1,4 @@
+import re
 from typing import Callable, Literal, Optional, List, cast, Type
 
 import logging
@@ -331,8 +332,10 @@ async def prompt_maker(
     )
 
     prompt = text_utils.template_grammar_fill(params, maker_grammar, random_fill)
+    prompt_text = ', '.join([v for v in prompt.values() if v])
+    prompt_text = re.sub(r',(\s*,)+', ',', prompt_text)
 
-    await interaction.response.send_message(', '.join(prompt.values()), silent=True)
+    await interaction.response.send_message(prompt_text, silent=True)
 
 
 @client.tree.command()
