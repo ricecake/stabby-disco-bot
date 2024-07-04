@@ -1,5 +1,5 @@
 import re
-from typing import Iterable, Text, Optional
+from typing import Iterable, Mapping, Text, Optional
 
 import stabby
 import stabby.grammar
@@ -76,7 +76,7 @@ def apply_default_params(request_params: dict, default_params: dict) -> dict:
     return new_params
 
 
-def template_grammar_fill(input: dict[str, Optional[str]], grammar: stabby.grammar.Grammar, fill: bool = True) -> dict[str, str]:
+def template_grammar_fill(input: Mapping[str, Optional[str]], grammar: stabby.grammar.Grammar, fill: bool = True) -> dict[str, str]:
     output = dict()
     for field, value in input.items():
         if value is not None:

@@ -9,7 +9,10 @@
 1 QUALITY_MOD low-resolution
 
 1 QUALITY_STYLE low-poly
-1 QUALITY_STYLE cinematic still
+1 QUALITY_STYLE cinematic
+1 QUALITY_STYLE dynamic
+1 QUALITY_STYLE artistic
+1 QUALITY_STYLE highly styalized
 
 
 ############ subject grammar
@@ -24,27 +27,27 @@
 1 CHARACTER ICON
 1 CHARACTER GENERIC_CRITTER
 
-1 WEIRD_THING mushroom cloud
-1 WEIRD_THING nuclear blast
-1 WEIRD_THING blob monster
-1 WEIRD_THING eldritch horror
+1 WEIRD_THING a mushroom cloud
+1 WEIRD_THING a nuclear blast
+1 WEIRD_THING a blob monster
+1 WEIRD_THING an eldritch horror
 1 WEIRD_THING fire
 
-1 NORMAL_THING cake
-1 NORMAL_THING pie
+1 NORMAL_THING a cake
+1 NORMAL_THING a pie
 1 NORMAL_THING cheese
-1 NORMAL_THING cupcake
-1 NORMAL_THING cup
-1 NORMAL_THING table
-1 NORMAL_THING plate
-1 NORMAL_THING stove
-1 NORMAL_THING chair
-1 NORMAL_THING lawn ornament
-1 NORMAL_THING car
-1 NORMAL_THING bus
-1 NORMAL_THING fountain
-1 NORMAL_THING rising bread dough
-1 NORMAL_THING loaf of bread
+1 NORMAL_THING a cupcake
+1 NORMAL_THING a cup
+1 NORMAL_THING a table
+1 NORMAL_THING a plate
+1 NORMAL_THING a stove
+1 NORMAL_THING a chair
+1 NORMAL_THING a lawn ornament
+1 NORMAL_THING a car
+1 NORMAL_THING a bus
+1 NORMAL_THING a fountain
+1 NORMAL_THING a bowl of rising bread dough
+1 NORMAL_THING a loaf of bread
 
 1 ICON Abraham Lincoln
 1 ICON Batman
@@ -82,30 +85,34 @@
 1 Action VERB NOUN
 
 ############ Environment grammar
-1 Environment in a dimly lit Gothic castle
-1 Environment on a beach
-1 Environment at a desk
-1 Environment in a studio
-1 Environment in a garage
-1 Environment on a plane
-1 Environment in an office
-1 Environment on a train
-1 Environment in a car
-1 Environment walking down the streen
-1 Environment in a busy city
-1 Environment in an empty field
-1 Environment in a cottage
-1 Environment on a movie set
-1 Environment on the moon
-1 Environment on mars
-1 Environment in space
-1 Environment near a black hole
-1 Environment underwater
-1 Environment at a coral reef
-1 Environment in a run down neighborhood
-1 Environment in a grocery store
+#TODO Need to add special modifiers for the different settings, so that it can be a bit more rich.
+1 Environment the setting is GENERIC_SETTING
+
+1 GENERIC_SETTING in a dimly lit Gothic castle
+1 GENERIC_SETTING on a beach
+1 GENERIC_SETTING at a desk
+1 GENERIC_SETTING in a studio
+1 GENERIC_SETTING in a garage
+1 GENERIC_SETTING on a plane
+1 GENERIC_SETTING in an office
+1 GENERIC_SETTING on a train
+1 GENERIC_SETTING in a car
+1 GENERIC_SETTING walking down the streen
+1 GENERIC_SETTING in a busy city
+1 GENERIC_SETTING in an empty field
+1 GENERIC_SETTING in a cottage
+1 GENERIC_SETTING on a movie set
+1 GENERIC_SETTING on the moon
+1 GENERIC_SETTING on mars
+1 GENERIC_SETTING in space
+1 GENERIC_SETTING near a black hole
+1 GENERIC_SETTING underwater
+1 GENERIC_SETTING at a coral reef
+1 GENERIC_SETTING in a run down neighborhood
+1 GENERIC_SETTING in a grocery store
 
 ############ Object grammar
+#TODO need to make this a bit more flexible, and more focused on "wearing" and "proximity"
 6 Object EMPTY
 1 Object wearing an intricate lace collar
 1 Object wearing fancy pants
@@ -113,13 +120,14 @@
 1 Object beside a giant pumpkin
 
 ############ Color grammar
-1 Color COLOR_INTRO COLORS
-
+3 Color COLOR_INTRO COLORS
+1 Color Color and Color
 
 1 COLOR_INTRO shades of
 1 COLOR_INTRO highlights of
 1 COLOR_INTRO shading in
 1 COLOR_INTRO primarially
+1 COLOR_INTRO accents of
 
 3 COLORS COLOR
 1 COLORS COLOR and COLORS
@@ -149,43 +157,16 @@
 1 COLOR_NAME saffron
 1 COLOR_NAME sky-blue
 
-
-
-
 ############ Style grammar
-1 Style DATE_STYLE
-1 Style STYLE
-1 Style EVOKER DATE_STYLE
-1 Style EVOKER STYLE
 1 Style EVOKER ARTIST
 1 Style EVOKER ARTIST 's ATTRIBUTE
+1 Style EVOKER a MODIFIER ARTIST
+1 Style EVOKER a MODIFIER ARTIST 's ATTRIBUTE
 
-1 EVOKER in the style reminiscent of
+1 EVOKER in a style reminiscent of
 1 EVOKER in the style of
 1 EVOKER emulating
-
-1 DATE_STYLE DATE_PERIOD STYLE
-1 STYLE TECHNIQUE
-1 STYLE MODIFIER TECHNIQUE
-
-1 TECHNIQUE illustration
-1 TECHNIQUE wood carving
-1 TECHNIQUE scroll
-1 TECHNIQUE cave painting
-1 TECHNIQUE manuscript
-1 TECHNIQUE childrens book
-1 TECHNIQUE watercolor
-1 TECHNIQUE fresco
-1 TECHNIQUE caricature
-1 TECHNIQUE photograph
-1 TECHNIQUE render
-1 TECHNIQUE manuscript
-1 TECHNIQUE film
-1 TECHNIQUE cinema
-1 TECHNIQUE selfie
-1 TECHNIQUE mural
-1 TECHNIQUE portrait
-1 TECHNIQUE oil painting
+1 EVOKER resembling
 
 1 MODIFIER MODIFIER MODIFIER
 1 MODIFIER noir
@@ -255,41 +236,162 @@
 1 ATTRIBUTE depth
 
 ############ mood grammar
-1 Mood atmosphere of mystery
-1 Mood serene
-1 Mood happy
-1 Mood sad
-1 Mood scary
-1 Mood silly
-1 Mood whimsical
+1 Mood the mood MOOD
+1 MOOD has an atmosphere of mystery
+1 MOOD is serene
+1 MOOD is happy
+1 MOOD is sad
+1 MOOD is scary
+1 MOOD is silly
+1 MOOD is whimsical
+1 MOOD is horror
 
 ############ lighting grammar
-1 Lighting bathed in soft, natural window light
-1 Lighting dramatic shadows under a spotlight
-1 Lighting golden hour
-1 Lighting soft lighting
-1 Lighting harsh lighting
-1 Lighting daylight from a partly cloudy sky
-1 Lighting at sunset
-1 Lighting sunlight catching dustmotes
+#1 Lighting NAMED_LIGHTING_STYLE
+
+1 Lighting LIGHT_QUALITIES lighting from LIGHT_SOURCE
+
+1 NAMED_LIGHTING_STYLE bathed in soft, natural window light
+1 NAMED_LIGHTING_STYLE dramatic shadows under a spotlight
+1 NAMED_LIGHTING_STYLE golden hour
+1 NAMED_LIGHTING_STYLE soft lighting
+1 NAMED_LIGHTING_STYLE harsh lighting
+1 NAMED_LIGHTING_STYLE daylight from a partly cloudy sky
+1 NAMED_LIGHTING_STYLE at sunset
+1 NAMED_LIGHTING_STYLE sunlight catching dustmotes
+
+1 LIGHT_QUALITIES harsh
+1 LIGHT_QUALITIES soft
+1 LIGHT_QUALITIES natural
+1 LIGHT_QUALITIES gentle
+1 LIGHT_QUALITIES dim
+1 LIGHT_QUALITIES blinding
+1 LIGHT_QUALITIES dramatic
+
+1 LIGHT_SOURCE INDOOR_LIGHT_SOURCE
+1 LIGHT_SOURCE OUTDOOR_LIGHT
+
+1 OUTDOOR_LIGHT OUTDOOR_LIGHT_SOURCE
+1 OUTDOOR_LIGHT OUTDOOR_LIGHT_SOURCE LIGHTING_TIME
+1 OUTDOOR_LIGHT OUTDOOR_LIGHT_SOURCE with LIGHTING_ATMOSPHERE
+1 OUTDOOR_LIGHT OUTDOOR_LIGHT_SOURCE LIGHTING_TIME with LIGHTING_ATMOSPHERE
+
+1 OUTDOOR_LIGHT_SOURCE sunlight
+1 OUTDOOR_LIGHT_SOURCE daylight
+1 OUTDOOR_LIGHT_SOURCE moonlight
+1 OUTDOOR_LIGHT_SOURCE starlight
+1 OUTDOOR_LIGHT_SOURCE a spotlight
+1 OUTDOOR_LIGHT_SOURCE a flashbulb
+1 OUTDOOR_LIGHT_SOURCE a flash
+1 OUTDOOR_LIGHT_SOURCE a flashlight
+1 OUTDOOR_LIGHT_SOURCE a searchlight
+1 OUTDOOR_LIGHT_SOURCE a fire
+1 OUTDOOR_LIGHT_SOURCE a campfire
+1 OUTDOOR_LIGHT_SOURCE a roadflare
+1 OUTDOOR_LIGHT_SOURCE a chemlight
+1 OUTDOOR_LIGHT_SOURCE a glowstick
+1 OUTDOOR_LIGHT_SOURCE an emergency flare
+1 OUTDOOR_LIGHT_SOURCE a signal flare
+1 OUTDOOR_LIGHT_SOURCE a sodium light
+1 OUTDOOR_LIGHT_SOURCE a streelight
+1 OUTDOOR_LIGHT_SOURCE a neon sign
+1 OUTDOOR_LIGHT_SOURCE a neon light
+
+
+1 INDOOR_LIGHT_SOURCE a spotlight
+1 INDOOR_LIGHT_SOURCE a wall lamp
+1 INDOOR_LIGHT_SOURCE a floor lamp
+1 INDOOR_LIGHT_SOURCE a flashbulb
+1 INDOOR_LIGHT_SOURCE a flash
+1 INDOOR_LIGHT_SOURCE a flashlight
+1 INDOOR_LIGHT_SOURCE a fire
+1 INDOOR_LIGHT_SOURCE a chemlight
+1 INDOOR_LIGHT_SOURCE a glowstick
+1 INDOOR_LIGHT_SOURCE a lightbulb
+1 INDOOR_LIGHT_SOURCE a flourescent light
+1 INDOOR_LIGHT_SOURCE an incandescent light
+1 INDOOR_LIGHT_SOURCE a neon sign
+1 INDOOR_LIGHT_SOURCE a tv
+1 INDOOR_LIGHT_SOURCE a CRT monitor
+1 INDOOR_LIGHT_SOURCE glowing dials
+1 INDOOR_LIGHT_SOURCE OUTDOOR_LIGHT through OPENING
+
+1 OPENING an open window
+1 OPENING a dirty window
+1 OPENING a clean window
+1 OPENING a broken window
+1 OPENING blinds
+1 OPENING broken blinds
+1 OPENING shutters
+1 OPENING a stained glass window
+1 OPENING a door
+1 OPENING a curtain
+1 OPENING curtains
+1 OPENING a hole in the wall
+1 OPENING a gap in the wall
+1 OPENING a crack in the wall
+
+1 LIGHTING_TIME at dawn
+1 LIGHTING_TIME at dusk
+1 LIGHTING_TIME at sunrise
+1 LIGHTING_TIME at sunset
+1 LIGHTING_TIME in the golden-hour
+1 LIGHTING_TIME at night
+1 LIGHTING_TIME at midnight
+1 LIGHTING_TIME in the morning
+1 LIGHTING_TIME in the afternoon
+1 LIGHTING_TIME at twighlight
+
+1 LIGHTING_ATMOSPHERE cloudy skies
+1 LIGHTING_ATMOSPHERE partly-cloudy skies
+1 LIGHTING_ATMOSPHERE clear skies
+1 LIGHTING_ATMOSPHERE foggy conditions
+1 LIGHTING_ATMOSPHERE hazy conditions
+1 LIGHTING_ATMOSPHERE smoggy air
+1 LIGHTING_ATMOSPHERE dusty air
 
 ############ perspective grammar
+1 Perspective portrait
 1 Perspective bird's eye view
-1 Perspective from a low angle
+1 Perspective low angle
 1 Perspective close-up
+1 Perspective extreme close-up
 1 Perspective wide-angle
 1 Perspective extreme wide-angle
 1 Perspective high-angle
 
 ############ texture grammar
-1 Texture textures of rich velvet and rough stone
-1 Texture plastic
-1 Texture wood
-1 Texture rich wood
-1 Texture metal
-1 Texture cement
-1 Texture brick
-1 Texture asphalt
+1 Texture GENERIC_TEXTURE texture
+
+1 GENERIC_TEXTURE SIMPLE_TEXTURE
+1 GENERIC_TEXTURE COMPLEX_TEXTURE
+1 GENERIC_TEXTURE COMPLEX_TEXTURE and COMPLEX_TEXTURE
+
+1 SIMPLE_TEXTURE TEXTURE_QUALITY
+1 SIMPLE_TEXTURE TEXTURE_MATERIAL
+1 COMPLEX_TEXTURE TEXTURE_QUALITY TEXTURE_MATERIAL
+
+1 TEXTURE_MATERIAL asphalt
+1 TEXTURE_MATERIAL bark
+1 TEXTURE_MATERIAL brick
+1 TEXTURE_MATERIAL cardboard
+1 TEXTURE_MATERIAL cement
+1 TEXTURE_MATERIAL concrete
+1 TEXTURE_MATERIAL fabric
+1 TEXTURE_MATERIAL fur
+1 TEXTURE_MATERIAL glass
+1 TEXTURE_MATERIAL leather
+1 TEXTURE_MATERIAL metal
+1 TEXTURE_MATERIAL paper
+1 TEXTURE_MATERIAL plastic
+1 TEXTURE_MATERIAL rock
+1 TEXTURE_MATERIAL skin
+1 TEXTURE_MATERIAL wood
+1 TEXTURE_MATERIAL wool
+1 TEXTURE_MATERIAL velvet
+1 TEXTURE_MATERIAL satin
+1 TEXTURE_MATERIAL nylon
+1 TEXTURE_MATERIAL rayon
 
 
 ############ time_period grammar
@@ -299,35 +401,59 @@
 ############ cultural_elements grammar
 1 Cultural_elements inspired by Norse mythology
 1 Cultural_elements traditional Japanese setting
-1 Cultural_elements cultural elements of NAMED_ERA
+3 Cultural_elements cultural elements of NAMED_ERA
 
 ############ emotion grammar
+5 Emotion EMPTY
 1 Emotion expression of deep contemplation
 1 Emotion joyful demeanor
 
 
 ############ medium grammar
-1 Medium resembling a watercolor painting
-1 Medium crisp digital rendering
-1 Medium studio portrait
-1 Medium claymation
-1 Medium artistic fondant cake
-1 Medium oil painting
-1 Medium photography
+1 Medium DATE_MEDIUM
+1 Medium MEDIUM
+
+1 DATE_MEDIUM DATE_PERIOD MEDIUM
+1 MEDIUM TECHNIQUE
+1 MEDIUM MODIFIER TECHNIQUE
+
+1 TECHNIQUE illustration
+1 TECHNIQUE wood carving
+1 TECHNIQUE scroll art
+1 TECHNIQUE wood etching
+1 TECHNIQUE parchment etching
+1 TECHNIQUE cave painting
+1 TECHNIQUE manuscript
+1 TECHNIQUE childrens book
+1 TECHNIQUE watercolor painting
+1 TECHNIQUE watercolor illustration
+1 TECHNIQUE watercolor childrens
+1 TECHNIQUE digital rendering
+1 TECHNIQUE computer model
+1 TECHNIQUE sprite art
+1 TECHNIQUE pixel art
+1 TECHNIQUE fresco
+1 TECHNIQUE caricature drawing
+1 TECHNIQUE photography
+1 TECHNIQUE rendering
+1 TECHNIQUE manuscript
+1 TECHNIQUE film frame
+1 TECHNIQUE cinematic still
+1 TECHNIQUE selfie
+1 TECHNIQUE mural
+1 TECHNIQUE portrait
+1 TECHNIQUE oil painting
+1 TECHNIQUE cake sculpting
+1 TECHNIQUE fondant modeling
+1 TECHNIQUE sugar modeling
+1 TECHNIQUE snowman art
+1 TECHNIQUE sandcastle sculpture
+
 
 ############ skin_texture grammar
-1 Skin_texture SKIN_QUALITY CREATURE skin texture
+1 Skin_texture TEXTURE_QUALITY CREATURE skin texture
 1 Skin_texture CREATURE skin texture
-1 Skin_texture SKIN_QUALITY skin texture
-
-1 SKIN_QUALITY rough
-1 SKIN_QUALITY soft
-1 SKIN_QUALITY mottled
-1 SKIN_QUALITY broken
-1 SKIN_QUALITY clean
-1 SKIN_QUALITY dirty
-1 SKIN_QUALITY hairy
-1 SKIN_QUALITY smooth
+1 Skin_texture TEXTURE_QUALITY skin texture
 
 1 CREATURE human
 1 CREATURE animal
@@ -346,6 +472,19 @@
 1 DECIMAL .75
 1 DECIMAL .8
 1 DECIMAL .9
+
+1 TEXTURE_QUALITY rough
+1 TEXTURE_QUALITY soft
+1 TEXTURE_QUALITY mottled
+1 TEXTURE_QUALITY broken
+1 TEXTURE_QUALITY clean
+1 TEXTURE_QUALITY dirty
+1 TEXTURE_QUALITY smooth
+1 TEXTURE_QUALITY rich
+1 TEXTURE_QUALITY weathered
+1 TEXTURE_QUALITY torn
+1 TEXTURE_QUALITY faded
+1 TEXTURE_QUALITY warped
 
 1 DATE_PERIOD CENTURY
 1 DATE_PERIOD year YEAR
