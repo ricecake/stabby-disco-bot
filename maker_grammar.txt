@@ -703,6 +703,11 @@
 1 VERB drinking
 1 VERB enjoying
 1 VERB loathing
+1 VERB smashing
+1 VERB crushing
+1 VERB studying
+1 VERB building
+1 VERB ignoring
 
 1 ADJ abandoned
 1 ADJ able
