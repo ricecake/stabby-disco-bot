@@ -13,33 +13,66 @@
 
 
 ############ subject grammar
-1 Subject CHARACTER
-1 Subject NAMED_ERA CHARACTER
-1 Subject DATE_PERIOD CHARACTER
+3 Subject ICON
+3 Subject NAMED_ERA CHARACTER
+3 Subject DATE_PERIOD CHARACTER
+1 Subject [ ICON : ICON : DECIMAL ]
+1 Subject [ NORMAL_THING : WEIRD_THING : DECIMAL ]
+1 Subject [ ICON : WEIRD_THING : DECIMAL ]
+1 Subject [ NORMAL_THING : ICON : DECIMAL ]
 
+1 CHARACTER ICON
+1 CHARACTER GENERIC_CRITTER
 
+1 WEIRD_THING mushroom cloud
+1 WEIRD_THING nuclear blast
+1 WEIRD_THING blob monster
+1 WEIRD_THING eldritch horror
+1 WEIRD_THING fire
 
-1 CHARACTER Abraham Lincoln
-1 CHARACTER Batman
-1 CHARACTER cat
-1 CHARACTER Chewbacca
-1 CHARACTER Danny DeVito
-1 CHARACTER Darth Vader
-1 CHARACTER David Bowie
-1 CHARACTER dog
-1 CHARACTER duke
-1 CHARACTER ghost
-1 CHARACTER Hulk Hogan
-1 CHARACTER king
-1 CHARACTER man
-1 CHARACTER monster
-1 CHARACTER nobleman
-1 CHARACTER noblewoman
-1 CHARACTER queen
-1 CHARACTER robot
-1 CHARACTER Spiderman
-1 CHARACTER Willem Dafoe
-1 CHARACTER woman
+1 NORMAL_THING cake
+1 NORMAL_THING pie
+1 NORMAL_THING cheese
+1 NORMAL_THING cupcake
+1 NORMAL_THING cup
+1 NORMAL_THING table
+1 NORMAL_THING plate
+1 NORMAL_THING stove
+1 NORMAL_THING chair
+1 NORMAL_THING lawn ornament
+1 NORMAL_THING car
+1 NORMAL_THING bus
+1 NORMAL_THING fountain
+1 NORMAL_THING rising bread dough
+1 NORMAL_THING loaf of bread
+
+1 ICON Abraham Lincoln
+1 ICON Batman
+1 ICON Chewbacca
+1 ICON Danny DeVito
+1 ICON Darth Vader
+1 ICON David Bowie
+1 ICON Hulk Hogan
+1 ICON Spiderman
+1 ICON Willem Dafoe
+
+1 GENERIC_CRITTER cat
+1 GENERIC_CRITTER dog
+1 GENERIC_CRITTER duck
+1 GENERIC_CRITTER duke
+1 GENERIC_CRITTER ghost
+1 GENERIC_CRITTER goat
+1 GENERIC_CRITTER goose
+1 GENERIC_CRITTER king
+1 GENERIC_CRITTER man
+1 GENERIC_CRITTER monster
+1 GENERIC_CRITTER nobleman
+1 GENERIC_CRITTER noblewoman
+1 GENERIC_CRITTER opossum
+1 GENERIC_CRITTER queen
+1 GENERIC_CRITTER racoon
+1 GENERIC_CRITTER robot
+1 GENERIC_CRITTER woman
 
 
 ############ Action grammar
@@ -56,9 +89,24 @@
 1 Environment in a garage
 1 Environment on a plane
 1 Environment in an office
+1 Environment on a train
+1 Environment in a car
+1 Environment walking down the streen
+1 Environment in a busy city
+1 Environment in an empty field
+1 Environment in a cottage
+1 Environment on a movie set
+1 Environment on the moon
+1 Environment on mars
+1 Environment in space
+1 Environment near a black hole
+1 Environment underwater
+1 Environment at a coral reef
+1 Environment in a run down neighborhood
+1 Environment in a grocery store
 
 ############ Object grammar
-4 Object EMPTY
+6 Object EMPTY
 1 Object wearing an intricate lace collar
 1 Object wearing fancy pants
 1 Object wearing comfortable shoes
@@ -286,6 +334,18 @@
 
 ############# Common symbols
 1 EMPTY
+
+1 DECIMAL .1
+1 DECIMAL .2
+1 DECIMAL .25
+1 DECIMAL .3
+1 DECIMAL .4
+1 DECIMAL .5
+1 DECIMAL .6
+1 DECIMAL .7
+1 DECIMAL .75
+1 DECIMAL .8
+1 DECIMAL .9
 
 1 DATE_PERIOD CENTURY
 1 DATE_PERIOD year YEAR
