@@ -23,6 +23,7 @@ config = conf.load_conf()
 logger = logging.getLogger('discord.stabby')
 karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
+maker_grammar = grammar.Grammar(config.maker_grammar)
 
 default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
 db_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count * 10, config.ratelimit_window)
@@ -263,40 +264,6 @@ async def inspire(interaction: discord.Interaction):
     inspiration = prompt_grammar.generate()
     await interaction.response.send_message(content=inspiration, silent=True)
 
-PROMPT_GENERATION_TEMPLATE = dict(  # ###### TODO: Replace this with something from the grammar generator, more flexible and more options
-    quality=["high-quality", "low-quality", "low-poly", "cinematic", "high-quality cinematic"],
-    subject=[
-        f"{attr} {role}"
-        for attr in ["Renaissance", "vampire", "robot", "cyborg", "", "lazy", "lego minifig", "cake"]
-        for role in ["noblewoman", "queen", "nobleman", "king", "duke", "robot", "cat", "man", "woman", "Willem Dafoe", "Abraham Lincoln", "dog", "monster", "ghost"]
-    ],
-    action=[
-        f"{adv} {verb} {adj} {target}"
-        for adv in ["", "joyfully", "sadly", "energeticly", "lazily", "angrily", "barely"]
-        for verb in ["holding", "stroking", "eating", "throwing", "observing", "looking at", "reading",]
-        for adj in ["", "new", "ancient", "clean", "large", "small", "dirty", "wonderful", "horrible", "ugly", "beautiful"]
-        for target in ["book", "muffin", "knife", "hammer", "phone", "scroll", "sack of money", "surfboard", "bottle", "pen", "laptop"]
-    ],
-    environment=["in a dimly lit Gothic castle", "on a beach", "at a desk", "in a studio", "in a garage", "on a plane", "in an office"],
-    object=["", "wearing an intricate lace collar", "wearing fancy pants", "wearing comfortable shoes", "beside a giant pumpkin"],
-    color=["shades of deep red and gold", "monochrome palette with stark contrasts",],
-    style=["in the style reminiscent of Vermeer's lighting techniques", "emulating a noir film", "80's fashion magazine covor"],
-    mood=["atmosphere of mystery", "serene", "happy", "sad", "scary"],
-    lighting=["bathed in soft, natural window light", "dramatic shadows under a spotlight", "golden hour", "soft lighting", "harsh lighting", "daylight from a partly cloudy sky", "at sunset", "sunlight catching dustmotes"],
-    perspective=["bird's eye view", "from a low angle", "close-up", "wide-angle", "extreme wide-angle", "high-angle"],
-    texture=["textures of rich velvet and rough stone", "plasting", "wood", "rich wood", "metal", "cement", "brick", "asphalt"],
-    time_period=["Victorian Era", "futuristic 22nd century", "cyberpunk"] + [f"from the {y}'s" for y in list(range(1300, 1900, 100)) + list(range(1900, 2030, 10))],
-    cultural_elements=["inspired by Norse mythology", "traditional Japanese setting", "edwardian england", "victorian england", "soviet russia", "colonial america"],
-    emotion=["expression of deep contemplation", "joyful demeanor",],
-    medium=["resembling a watercolor painting", "crisp digital rendering", "studio portrait", "claymation", "artistic fondant cake", "oil painting", "photography"],
-    skin_texture=[
-        f"{quality} {creature} skin texture"
-        for creature in ["", "human", "animal"]
-        for quality in ["", "rough", "soft", "mottled", "broken", "clean", "dirty", "hairy", "smooth"]
-        if creature != quality and quality != ""
-    ],
-)
-
 @client.tree.command()
 @app_commands.describe(
     random_fill="Fill in an missing fields with random data",
@@ -341,8 +308,8 @@ async def prompt_maker(
     auto_quality: Optional[bool] = True,
 ):
     """Builds a prompt based on your inputs"""
-    if quality is None and auto_quality:
-        quality = 'high-resolution cinematic'
+    if quality is None and auto_quality and not random_fill:
+        quality = maker_grammar.generate(start='Quality')
 
     params = dict(
         quality=quality,
@@ -363,7 +330,7 @@ async def prompt_maker(
         skin_texture=skin_texture,
     )
 
-    prompt = text_utils.randomized_template(params, PROMPT_GENERATION_TEMPLATE, random_fill)
+    prompt = text_utils.template_grammar_fill(params, maker_grammar, random_fill)
 
     await interaction.response.send_message(', '.join(prompt.values()), silent=True)
 

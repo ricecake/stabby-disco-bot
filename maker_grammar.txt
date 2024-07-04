@@ -1,0 +1,347 @@
+########### quality grammar
+1 Quality QUALITY_MOD
+1 Quality QUALITY_STYLE
+1 Quality QUALITY_MOD QUALITY_STYLE
+
+1 QUALITY_MOD high-quality
+1 QUALITY_MOD low-quality
+1 QUALITY_MOD high-resolution
+1 QUALITY_MOD low-resolution
+
+1 QUALITY_STYLE low-poly
+1 QUALITY_STYLE cinematic still
+
+
+############ subject grammar
+1 Subject CHARACTER
+1 Subject NAMED_ERA CHARACTER
+1 Subject DATE_PERIOD CHARACTER
+
+
+1 CHARACTER noblewoman
+1 CHARACTER queen
+1 CHARACTER nobleman
+1 CHARACTER king
+1 CHARACTER duke
+1 CHARACTER robot
+1 CHARACTER cat
+1 CHARACTER man
+1 CHARACTER woman
+1 CHARACTER Willem Dafoe
+1 CHARACTER Abraham Lincoln
+1 CHARACTER dog
+1 CHARACTER monster
+1 CHARACTER ghost
+
+
+############ Action grammar
+1 Action ADV VERB ADJ NOUN
+1 Action VERB ADJ NOUN
+1 Action ADV VERB NOUN
+1 Action VERB NOUN
+
+############ Environment grammar
+1 Environment in a dimly lit Gothic castle
+1 Environment on a beach
+1 Environment at a desk
+1 Environment in a studio
+1 Environment in a garage
+1 Environment on a plane
+1 Environment in an office
+
+############ Object grammar
+1 Object wearing an intricate lace collar
+1 Object wearing fancy pants
+1 Object wearing comfortable shoes
+1 Object beside a giant pumpkin
+
+############ Color grammar
+1 Color shades of deep red and gold
+
+############ Style grammar
+1 Style DATE_STYLE
+1 Style STYLE
+1 Style EVOKER DATE_STYLE
+1 Style EVOKER STYLE
+1 Style EVOKER ARTIST
+1 Style EVOKER ARTIST 's ATTRIBUTE
+
+1 EVOKER in the style reminiscent of
+1 EVOKER in the style of
+1 EVOKER emulating
+
+1 DATE_STYLE DATE_PERIOD STYLE
+1 STYLE TECHNIQUE
+1 STYLE MODIFIER TECHNIQUE
+
+1 TECHNIQUE illustration
+1 TECHNIQUE wood carving
+1 TECHNIQUE scroll
+1 TECHNIQUE cave painting
+1 TECHNIQUE manuscript
+1 TECHNIQUE childrens book
+1 TECHNIQUE watercolor
+1 TECHNIQUE fresco
+1 TECHNIQUE caricature
+1 TECHNIQUE photograph
+1 TECHNIQUE render
+1 TECHNIQUE manuscript
+1 TECHNIQUE film
+1 TECHNIQUE cinema
+1 TECHNIQUE selfie
+1 TECHNIQUE mural
+1 TECHNIQUE portrait
+1 TECHNIQUE oil painting
+
+1 MODIFIER MODIFIER MODIFIER
+1 MODIFIER noir
+1 MODIFIER medieval
+1 MODIFIER cartoon
+1 MODIFIER cyberpunk
+1 MODIFIER art nouveau
+1 MODIFIER fart nouveau
+2 MODIFIER fart deco
+1 MODIFIER art deco
+1 MODIFIER dadist
+1 MODIFIER punk
+1 MODIFIER grunge
+1 MODIFIER pop art
+1 MODIFIER tudor
+1 MODIFIER victorian
+1 MODIFIER elizabethan
+1 MODIFIER disco
+1 MODIFIER hipster
+1 MODIFIER goth
+1 MODIFIER mall goth
+1 MODIFIER gothic
+1 MODIFIER raver
+1 MODIFIER atom punk
+1 MODIFIER comic book
+1 MODIFIER cel-shaded
+1 MODIFIER 2d
+1 MODIFIER 3d
+1 MODIFIER smoke
+1 MODIFIER fractal
+1 MODIFIER puppet
+1 MODIFIER delicate
+1 MODIFIER intricate
+1 MODIFIER Neon
+1 MODIFIER vaporwave
+1 MODIFIER realism
+1 MODIFIER pinup
+1 MODIFIER cubist
+
+1 ARTIST rembrandt
+1 ARTIST monet
+1 ARTIST van gogh
+1 ARTIST matisse
+1 ARTIST picasso
+1 ARTIST salvador dali
+1 ARTIST andy warhol
+1 ARTIST cezanne
+1 ARTIST magritte
+1 ARTIST vermeer
+1 ARTIST escher
+1 ARTIST michelangelo
+1 ARTIST hieronymus bosch
+1 ARTIST yoshitaka amano
+1 ARTIST hr Geiger
+1 ARTIST Caravaggio
+1 ARTIST Modigliani
+1 ARTIST frida Kahlo
+
+1 ATTRIBUTE composition
+1 ATTRIBUTE lighting
+1 ATTRIBUTE tone
+1 ATTRIBUTE feel
+1 ATTRIBUTE layout
+1 ATTRIBUTE perspective
+1 ATTRIBUTE shading
+1 ATTRIBUTE emotion
+1 ATTRIBUTE depth
+
+############ mood grammar
+1 Mood atmosphere of mystery
+1 Mood serene
+1 Mood happy
+1 Mood sad
+1 Mood scary
+
+
+############ lighting grammar
+1 Lighting bathed in soft, natural window light
+1 Lighting dramatic shadows under a spotlight
+1 Lighting golden hour
+1 Lighting soft lighting
+1 Lighting harsh lighting
+1 Lighting daylight from a partly cloudy sky
+1 Lighting at sunset
+1 Lighting sunlight catching dustmotes
+
+############ perspective grammar
+1 Perspective bird's eye view
+1 Perspective from a low angle
+1 Perspective close-up
+1 Perspective wide-angle
+1 Perspective extreme wide-angle
+1 Perspective high-angle
+
+############ texture grammar
+1 Texture textures of rich velvet and rough stone
+1 Texture plastic
+1 Texture wood
+1 Texture rich wood
+1 Texture metal
+1 Texture cement
+1 Texture brick
+1 Texture asphalt
+
+
+############ time_period grammar
+1 Time_period from the DATE_PERIOD
+1 Time_period from NAMED_ERA
+
+############ cultural_elements grammar
+1 Cultural_elements inspired by Norse mythology
+1 Cultural_elements traditional Japanese setting
+1 Cultural_elements cultural elements of NAMED_ERA
+
+############ emotion grammar
+1 Emotion expression of deep contemplation
+1 Emotion joyful demeanor
+
+############ medium grammar
+1 Medium resembling a watercolor painting
+1 Medium crisp digital rendering
+1 Medium studio portrait
+1 Medium claymation
+1 Medium artistic fondant cake
+1 Medium oil painting
+1 Medium photography
+
+############ skin_texture grammar
+1 Skin_texture SKIN_QUALITY CREATURE skin texture
+1 Skin_texture CREATURE skin texture
+1 Skin_texture SKIN_QUALITY skin texture
+
+1 SKIN_QUALITY rough
+1 SKIN_QUALITY soft
+1 SKIN_QUALITY mottled
+1 SKIN_QUALITY broken
+1 SKIN_QUALITY clean
+1 SKIN_QUALITY dirty
+1 SKIN_QUALITY hairy
+1 SKIN_QUALITY smooth
+
+1 CREATURE human
+1 CREATURE animal
+
+############# Common symbols
+1 EMPTY
+
+1 DATE_PERIOD CENTURY
+1 DATE_PERIOD year YEAR
+1 DATE_PERIOD DECADE
+
+1 CENTURY 1st century
+1 CENTURY 2nd century
+1 CENTURY 3rd century
+1 CENTURY 4th century
+1 CENTURY 5th century
+1 CENTURY 6th century
+1 CENTURY 7th century
+1 CENTURY 8th century
+1 CENTURY 9th century
+1 CENTURY 10th century
+1 CENTURY 11th century
+1 CENTURY 12th century
+1 CENTURY 13th century
+1 CENTURY 14th century
+1 CENTURY 15th century
+1 CENTURY 16th century
+1 CENTURY 17th century
+1 CENTURY 18th century
+1 CENTURY 19th century
+1 CENTURY 20th century
+1 CENTURY 21st century
+1 CENTURY 22nd century
+1 CENTURY 23rd century
+1 CENTURY 24th century
+1 CENTURY 25th century
+1 CENTURY 26th century
+1 CENTURY 27th century
+1 CENTURY 28th century
+1 CENTURY 29th century
+1 CENTURY 30th century
+
+1 DECADE YEAR 's
+
+1 YEAR 1200
+1 YEAR 1300
+1 YEAR 1400
+1 YEAR 1500
+1 YEAR 1600
+1 YEAR 1700
+1 YEAR 1800
+1 YEAR 1900
+1 YEAR 1910
+1 YEAR 1920
+1 YEAR 1930
+1 YEAR 1940
+1 YEAR 1950
+1 YEAR 1960
+1 YEAR 1970
+1 YEAR 1980
+1 YEAR 1990
+1 YEAR 2000
+1 YEAR 2010
+1 YEAR 2020
+
+1 NAMED_ERA victorian era england
+1 NAMED_ERA edwardian era england
+1 NAMED_ERA regency era england
+1 NAMED_ERA meji period japan
+1 NAMED_ERA edo period japan
+1 NAMED_ERA ancient egypt
+1 NAMED_ERA roman empire
+1 NAMED_ERA czarist russia
+1 NAMED_ERA soviet russia
+1 NAMED_ERA colonial america
+
+1 ADV joyfully
+1 ADV sadly
+1 ADV energeticly
+1 ADV lazily
+1 ADV angrily
+1 ADV barely
+
+1 VERB holding
+1 VERB stroking
+1 VERB eating
+1 VERB throwing
+1 VERB observing
+1 VERB looking at
+1 VERB reading
+
+1 ADJ new
+1 ADJ ancient
+1 ADJ clean
+1 ADJ large
+1 ADJ small
+1 ADJ dirty
+1 ADJ wonderful
+1 ADJ horrible
+1 ADJ ugly
+1 ADJ beautiful
+
+1 NOUN book
+1 NOUN muffin
+1 NOUN knife
+1 NOUN hammer
+1 NOUN phone
+1 NOUN scroll
+1 NOUN sack of money
+1 NOUN surfboard
+1 NOUN bottle
+1 NOUN pen
+1 NOUN laptop

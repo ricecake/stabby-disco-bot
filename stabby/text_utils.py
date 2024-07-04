@@ -1,6 +1,8 @@
-import random
 import re
 from typing import Iterable, Text, Optional
+
+import stabby
+import stabby.grammar
 
 
 def prompt_to_overlay(prompt):
@@ -74,11 +76,11 @@ def apply_default_params(request_params: dict, default_params: dict) -> dict:
     return new_params
 
 
-def randomized_template(input: dict[str, Optional[str]], template: dict[str, list[str]], fill: bool = True) -> dict[str, str]:
+def template_grammar_fill(input: dict[str, Optional[str]], grammar: stabby.grammar.Grammar, fill: bool = True) -> dict[str, str]:
     output = dict()
     for field, value in input.items():
         if value is not None:
             output[field] = value
         elif fill:
-            output[field] = random.choice(template.get(field, []))
+            output[field] = grammar.generate(start=field.capitalize())
     return output

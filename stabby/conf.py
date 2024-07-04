@@ -24,6 +24,7 @@ class Conf(pydantic.BaseModel):
     token: str
     karma_grammar: str
     prompt_grammar: str
+    maker_grammar: str
     owner_id: int
     title_font: str = pydantic.Field(default='droid-sans-mono.ttf')
     artist_font: str = pydantic.Field(default='droid-sans-mono.ttf')
