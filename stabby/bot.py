@@ -332,7 +332,16 @@ async def prompt_maker(
     )
 
     prompt = text_utils.template_grammar_fill(params, maker_grammar, random_fill)
-    prompt_text = ', '.join([v for v in prompt.values() if v])
+
+    prompt_text = ''
+    for joint_fields in [
+        ['subject', 'object', 'action'],
+        ['perspective', 'quality', 'medium', 'style'],
+    ]:
+        prompt_text += ' '.join([prompt.pop(field, '') for field in joint_fields])
+        prompt_text += ', '
+
+    prompt_text += ', '.join([v for v in prompt.values() if v])
     prompt_text = re.sub(r',(\s*,)+', ',', prompt_text)
 
     await interaction.response.send_message(prompt_text, silent=True)
