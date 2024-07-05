@@ -283,7 +283,6 @@ async def inspire(interaction: discord.Interaction):
     cultural_elements="Elements that reflect specific cultures or traditions.",
     emotion="The expressed emotion if the subject is sentient.",
     medium="Specifies the artistic medium or level of detail.",
-    skin_texture="For detailed depictions of human or animal skin",
     auto_quality="automatically fill a quality specifier",
 )
 @ephemeral_ratelimiter
@@ -305,7 +304,6 @@ async def prompt_maker(
     cultural_elements: Optional[str] = None,
     emotion: Optional[str] = None,
     medium: Optional[str] = None,
-    skin_texture: Optional[str] = None,
     auto_quality: Optional[bool] = True,
 ):
     """Builds a prompt based on your inputs"""
@@ -328,7 +326,6 @@ async def prompt_maker(
         cultural_elements=cultural_elements,
         emotion=emotion,
         medium=medium,
-        skin_texture=skin_texture,
     )
 
     prompt = text_utils.template_grammar_fill(params, maker_grammar, random_fill)
@@ -342,7 +339,7 @@ async def prompt_maker(
         prompt_text += ', '
 
     prompt_text += ', '.join([v for v in prompt.values() if v])
-    prompt_text = re.sub(r',(\s*,)+', ',', prompt_text)
+    prompt_text = re.sub(r'[ ]+', ' ', prompt_text)
 
     await interaction.response.send_message(prompt_text, silent=True)
 

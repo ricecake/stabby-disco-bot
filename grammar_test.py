@@ -36,7 +36,6 @@ elif args.subcommand == 'maker':
         time_period=None,
         cultural_elements=None,
         emotion=None,
-        skin_texture=None,
     )
 
     prompt = text_utils.template_grammar_fill(params, language, True)
@@ -50,5 +49,5 @@ elif args.subcommand == 'maker':
         prompt_text += ', '
 
     prompt_text += ', '.join([v for v in prompt.values() if v])
-    prompt_text = re.sub(r',(\s*,)+', ',', prompt_text)
+    prompt_text = re.sub(r'[ ]+', ' ', prompt_text)
     print(prompt_text)

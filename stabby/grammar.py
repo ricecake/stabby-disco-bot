@@ -56,10 +56,10 @@ class Grammar():
         sentence: list = []
         self._sentence_generator(start, sentence)
         text = ' '.join(sentence)
-        text = re.sub(r'[ ]+', ' ', text)
         text = re.sub(r',(\s*,)+', ',', text)
         text = re.sub(r'[,]+', ',', text)
         text = re.sub(r'([\[({])\s+', r'\1', text)
         text = re.sub(r'\s+([\])},])', r'\1', text)
         text = re.sub(r'([\w\d])\s+([^\w\d])', r'\1\2', text)
+        text = re.sub(r'[ ]+', ' ', text)
         return text
