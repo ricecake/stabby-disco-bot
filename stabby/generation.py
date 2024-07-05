@@ -17,6 +17,7 @@ logger = logging.getLogger('discord.stabby.generator')
 
 @dataclasses.dataclass
 class ServerStatus:
+    offline_count: int = 0
     observed_online: bool = True
     manually_disabled: bool = False
 

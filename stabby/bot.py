@@ -221,12 +221,18 @@ async def check_server_status():
         logger.info(f"Server status changed: online={online}")
         server_status.observed_online = online
 
+    if not online:
+        server_status.offline_count += 1
+
     if server_status.available != available:
         logger.info(f"Server availability changed: available={server_status.available}")
         for channel_id in config.status_notify:
             channel = client.get_channel(channel_id)
-            if channel:
+            if channel and server_status.offline_count > 60:
                 await channel.send("Generation is now {}".format("available" if server_status.available else "unavailable"), silent=True)  # type: ignore
+
+    if server_status.observed_online:
+        server_status.offline_count = 0
 
 
 @client.event
