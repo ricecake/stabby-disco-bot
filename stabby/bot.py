@@ -12,7 +12,7 @@ from functools import wraps
 from stabby import conf, generation, grammar, schema
 from stabby import text_utils
 from stabby.schema import Style, db_session, Preferences, Generation, ServerPreferences
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 
 import stabby.text_utils
 from stabby.text_utils import union_prompts
@@ -26,7 +26,14 @@ karma_grammar = grammar.Grammar(config.karma_grammar)
 prompt_grammar = grammar.Grammar(config.prompt_grammar)
 maker_grammar = grammar.Grammar(config.maker_grammar)
 
-default_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count, config.ratelimit_window)
+def generate_ratelimiter_with_contributor_whitelist(interaction: discord.Interaction) -> Optional[app_commands.Cooldown]:
+    if interaction.user.id == config.owner_id:
+        return None
+
+    return app_commands.Cooldown(config.ratelimit_count, config.ratelimit_window)
+
+
+generate_ratelimiter = app_commands.checks.dynamic_cooldown(generate_ratelimiter_with_contributor_whitelist)
 db_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count * 10, config.ratelimit_window)
 ephemeral_ratelimiter = app_commands.checks.cooldown(config.ratelimit_count * 30, config.ratelimit_window)
 
@@ -351,7 +358,7 @@ async def prompt_maker(
 
 
 @client.tree.command()
-@default_ratelimiter
+@generate_ratelimiter
 async def bezos(interaction: discord.Interaction):
     """Right into the sun with ya'"""
     await generation_interaction(
@@ -363,7 +370,7 @@ async def bezos(interaction: discord.Interaction):
 
 
 @client.tree.command(name="karma-wheel")
-@default_ratelimiter
+@generate_ratelimiter
 async def karma_wheel(interaction: discord.Interaction):
     """Spin the wheel, see what they get"""
     prompt = karma_grammar.generate()
@@ -373,8 +380,8 @@ async def karma_wheel(interaction: discord.Interaction):
 
 def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation, same_user: bool = False) -> discord.app_commands.commands.AutocompleteCallback:
     async def autocompleter(interaction: discord.Interaction, current: str) -> List[discord.app_commands.models.Choice]:
-        column = getattr(table, field)
-        created_at = getattr(table, 'created_at')
+        column: ColumnElement = getattr(table, field)
+        created_at: ColumnElement = getattr(table, 'created_at')
         with db_session() as session:
             query = (select(column)
                      .where(column.is_not(None))
@@ -385,9 +392,18 @@ def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation,
                      .limit(25)
                      .order_by(func.max(created_at).desc()))
 
-            if same_user:
+            if same_user and 'user_id' in table.__table__.columns:
                 user_id = getattr(table, 'user_id')
                 query = query.where(user_id == interaction.user.id)
+
+            if 'server_id' in table.__table__.columns:
+                server_id = getattr(table, 'server_id')
+                clause = (server_id == interaction.guild_id)
+                if 'user_id' in table.__table__.columns:
+                    user_id = getattr(table, 'user_id')
+                    clause = clause | (user_id == interaction.user.id)
+
+                query = query.where(clause)
 
             results = []
             for (value,) in list(session.execute(query)):
@@ -414,7 +430,7 @@ def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation,
     negative_prompt=make_autocompleter('negative_prompt'),
     style=make_autocompleter('name', Style, same_user=True),
 )
-@default_ratelimiter
+@generate_ratelimiter
 async def generate(
     interaction: discord.Interaction,
     prompt: str,
@@ -453,7 +469,7 @@ async def generate(
     prompt=make_autocompleter('prompt'),
     negative_prompt=make_autocompleter('negative_prompt'),
 )
-@default_ratelimiter
+@generate_ratelimiter
 async def regen(
         interaction: discord.Interaction,
         prompt: Optional[str] = None,
@@ -703,7 +719,7 @@ async def create_style(
 
 # This context menu command only works on messages
 @client.tree.context_menu(name='AI-ify this bad boy')
-@default_ratelimiter
+@generate_ratelimiter
 async def ai_message_content(interaction: discord.Interaction, message: discord.Message):
     prompt = message.clean_content
     negative = "boring, dull, NSFW, porn, nudity"
@@ -725,7 +741,7 @@ def only_self_messages(f: Callable):
 
 # This context menu command only works on messages
 @client.tree.context_menu(name='Again! Again!')
-@default_ratelimiter
+@generate_ratelimiter
 async def regen_with_new_seed(interaction: discord.Interaction, message: discord.Message):
     await interaction.response.defer(ephemeral=True)
 
@@ -745,11 +761,11 @@ async def regen_with_new_seed(interaction: discord.Interaction, message: discord
         **regen_params
     )
 
-
 # This context menu command only works on messages
-@client.tree.context_menu(name='Sans overlay')
-@default_ratelimiter
-async def regen_without_overlay(interaction: discord.Interaction, message: discord.Message):
+@client.tree.context_menu(name='Enhance')
+@generate_ratelimiter
+async def regen_with_more_steps(interaction: discord.Interaction, message: discord.Message):
+    """Regenerate with a higher step-count"""
     await interaction.response.defer(ephemeral=True)
 
     regen_params = None
@@ -762,11 +778,37 @@ async def regen_without_overlay(interaction: discord.Interaction, message: disco
             return
         regen_params = saved_generation.regen_params()
 
-    regen_params['overlay'] = False
+    if regen_params['steps'] >= config.max_steps:
+        await interaction.followup.send("I'm afraid I won't put more than {} steps into an image.".format(config.max_steps), ephemeral=True)
+        return
+
+    regen_params['steps'] = min(2 * regen_params['steps'], config.max_steps)
     await generation_interaction(
         interaction,
         **regen_params
     )
+
+# # This context menu command only works on messages
+# @client.tree.context_menu(name='Sans overlay')
+# @generate_ratelimiter
+# async def regen_without_overlay(interaction: discord.Interaction, message: discord.Message):
+#     await interaction.response.defer(ephemeral=True)
+
+#     regen_params = None
+#     with db_session() as session:
+#         message_id = message.id
+#         saved_generation = session.scalar(
+#             select(Generation).where(Generation.message_id == message_id))
+#         if saved_generation is None:
+#             await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+#             return
+#         regen_params = saved_generation.regen_params()
+
+#     regen_params['overlay'] = False
+#     await generation_interaction(
+#         interaction,
+#         **regen_params
+#     )
 
 
 # This context menu command only works on messages

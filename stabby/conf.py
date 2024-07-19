@@ -33,6 +33,7 @@ class Conf(pydantic.BaseModel):
     status_notify: list[int] = pydantic.Field(default_factory=lambda: list())
     ratelimit_count: int = pydantic.Field(default=1)
     ratelimit_window: float = pydantic.Field(default=20.0)
+    max_steps: int = pydantic.Field(default=50)
     global_defaults: GlobalDefaults
 
 
