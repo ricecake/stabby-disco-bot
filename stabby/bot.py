@@ -1,4 +1,5 @@
 import re
+import traceback
 from typing import Callable, Literal, Optional, List, cast, Type
 
 import logging
@@ -84,7 +85,6 @@ async def generation_interaction(
 ) -> None:
     assert interaction.guild is not None
     assert http_client is not None
-    assert interaction.command is not None
 
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
@@ -171,7 +171,7 @@ async def generation_interaction(
             await interaction.followup.send(stabby.text_utils.prettify_params(reprompt_struct), ephemeral=True)
 
             message = await interaction.followup.send(
-                content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name),
+                content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name if interaction.command else 'Magic!'),
                 file=file,
                 wait=True,
                 silent=True,
@@ -378,7 +378,7 @@ async def karma_wheel(interaction: discord.Interaction):
     await generation_interaction(interaction, prompt=prompt)
 
 
-def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation, same_user: bool = False) -> discord.app_commands.commands.AutocompleteCallback:
+def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation, same_user: bool = False, limit: int = 25) -> discord.app_commands.commands.AutocompleteCallback:
     async def autocompleter(interaction: discord.Interaction, current: str) -> List[discord.app_commands.models.Choice]:
         column: ColumnElement = getattr(table, field)
         created_at: ColumnElement = getattr(table, 'created_at')
@@ -389,7 +389,7 @@ def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation,
                      .where(column.icontains(current, autoescape=True))
                      .where(func.char_length(column) < 100)
                      .group_by(column)
-                     .limit(25)
+                     .limit(min(25, limit))
                      .order_by(func.max(created_at).desc()))
 
             if same_user and 'user_id' in table.__table__.columns:
@@ -426,8 +426,8 @@ def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation,
     restore_faces="Fix faces in post processing"
 )
 @app_commands.autocomplete(
-    prompt=make_autocompleter('prompt'),
-    negative_prompt=make_autocompleter('negative_prompt'),
+    prompt=make_autocompleter('prompt', limit=5),
+    negative_prompt=make_autocompleter('negative_prompt', limit=5),
     style=make_autocompleter('name', Style, same_user=True),
 )
 @generate_ratelimiter
@@ -466,8 +466,8 @@ async def generate(
     message_id='The ID of the message to regenerate',
 )
 @app_commands.autocomplete(
-    prompt=make_autocompleter('prompt'),
-    negative_prompt=make_autocompleter('negative_prompt'),
+    prompt=make_autocompleter('prompt', limit=5),
+    negative_prompt=make_autocompleter('negative_prompt', limit=5),
 )
 @generate_ratelimiter
 async def regen(
@@ -788,28 +788,6 @@ async def regen_with_more_steps(interaction: discord.Interaction, message: disco
         **regen_params
     )
 
-# # This context menu command only works on messages
-# @client.tree.context_menu(name='Sans overlay')
-# @generate_ratelimiter
-# async def regen_without_overlay(interaction: discord.Interaction, message: discord.Message):
-#     await interaction.response.defer(ephemeral=True)
-
-#     regen_params = None
-#     with db_session() as session:
-#         message_id = message.id
-#         saved_generation = session.scalar(
-#             select(Generation).where(Generation.message_id == message_id))
-#         if saved_generation is None:
-#             await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
-#             return
-#         regen_params = saved_generation.regen_params()
-
-#     regen_params['overlay'] = False
-#     await generation_interaction(
-#         interaction,
-#         **regen_params
-#     )
-
 
 # This context menu command only works on messages
 @client.tree.context_menu(name='Censor Generated Image')
@@ -830,22 +808,78 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
 
     await interaction.followup.send('Sorry about the upset!', ephemeral=True)
 
-# This context menu command only works on messages
+
+class Tweak(discord.ui.Modal, title='Tweak prompt'):
+    def __init__(self, message_id: int, prompt: Optional[str] = None, negative_prompt: Optional[str] = None, seed: int = -1, **kwargs) -> None:
+        super().__init__()
+
+        self.message_id = message_id
+        self.prompt.default = prompt
+        self.negative_prompt.default = negative_prompt
+        self.seed.default = str(seed)
+
+    prompt = discord.ui.TextInput(
+        label='Prompt',
+        style=discord.TextStyle.long,
+        placeholder=karma_grammar.generate(),
+        required=True,
+    )
+
+    negative_prompt = discord.ui.TextInput(
+        label='Negative Prompt',
+        style=discord.TextStyle.paragraph,
+    )
+
+    seed = discord.ui.TextInput(
+        label='Seed',
+        style=discord.TextStyle.short,
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.send_message('Please hold...', ephemeral=True)
+        params = dict(
+            prompt=self.prompt.value,
+            negative_prompt=self.negative_prompt.value,
+            seed=int(self.seed.value) or -1
+        )
+
+        with db_session() as session:
+            message_id = self.message_id
+            saved_generation = session.scalar(
+                select(Generation).where(Generation.message_id == message_id))
+            if saved_generation is None:
+                await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+                return
+
+            regen_params = saved_generation.regen_params()
+
+            params = apply_default_params(params, regen_params)
+
+        await generation_interaction(
+            interaction,
+            **params
+        )
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        await interaction.response.send_message('Oops! Something went wrong.', ephemeral=True)
+
+        # Make sure we know what the error actually is
+        traceback.print_exception(type(error), error, error.__traceback__)
 
 
-@client.tree.context_menu(name='Get Generation Parameters')
+@client.tree.context_menu(name='Tweak Prompt')
 @only_self_messages
 @db_ratelimiter
 async def fetch_generation_params(interaction: discord.Interaction, message: discord.Message):
-    await interaction.response.defer(ephemeral=True)
-
     with db_session() as session:
         message_id = message.id
         saved_generation = session.scalar(
             select(Generation).where(Generation.message_id == message_id))
         if saved_generation is None:
-            await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+            await interaction.response.send_message("Unfortunately, that one isn't in my database", ephemeral=True)
             return
 
+        regen_params = saved_generation.regen_params()
+        await interaction.response.send_modal(Tweak(message_id, **regen_params))
         display = stabby.text_utils.prettify_params(saved_generation.regen_params())
         await interaction.followup.send(display)
