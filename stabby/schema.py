@@ -99,14 +99,7 @@ class Preferences(StabbyTable):
     def get_defaults(self) -> dict:
         values = self.as_dict()
         return {
-            field: value for field, value in values.items() if value is not None and field in [
-                'negative_prompt',
-                'overlay',
-                'spoiler',
-                'tiling',
-                'restore_faces',
-                'use_refiner',
-            ]
+            field: value for field, value in values.items() if value is not None and field in Generation.display_fields()
         }
 
 
@@ -159,20 +152,7 @@ class Generation(StabbyTable):
     def regen_params(self):
         fields = self.as_dict()
         return {
-            field: value for field, value in fields.items() if field is not None and field in [
-                'prompt',
-                'negative_prompt',
-                'overlay',
-                'spoiler',
-                'tiling',
-                'restore_faces',
-                'use_refiner',
-                'width',
-                'height',
-                'cfg_scale',
-                'steps',
-                'seed',
-            ]
+            field: value for field, value in fields.items() if field is not None and field in self.display_fields()
         }
 
 

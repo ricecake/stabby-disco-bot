@@ -1,5 +1,6 @@
+import builtins
 import re
-from typing import Iterable, Mapping, Text, Optional
+from typing import Any, Iterable, Mapping, Text, Optional, Union, cast
 
 import stabby
 import stabby.grammar
@@ -24,14 +25,20 @@ def prompt_to_overlay(prompt):
     return (title, desc)
 
 
-def prettify_params(params) -> str:
-    filtered_kwargs = [
-        (key, value) for key, value in params.items() if value is not None and value != ''
-    ]
+def filter_params(params: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in params.items()
+        if value is not None and value != ''
+    }
 
+def prettify_param(param) -> str:
+    return param.replace('_', ' ').capitalize()
+
+def prettify_params(params) -> str:
     display = []
-    for key, value in filtered_kwargs:
-        display_key = key.replace('_', ' ').capitalize()
+    for key, value in filter_params(params).items():
+        display_key = prettify_param(key)
         display.append('{}: {}'.format(display_key, value))
 
     return ', '.join(display)
@@ -84,3 +91,30 @@ def template_grammar_fill(input: Mapping[str, Optional[str]], grammar: stabby.gr
         elif fill:
             output[field] = grammar.generate(start=field.capitalize())
     return output
+
+def convert_to_bool(input: Union[bool, str, int, float]) -> bool:
+    match type(input):
+        case builtins.bool:
+            return cast(bool, input)
+        case builtins.str:
+            to_check = cast(str, input).lower()
+            is_text_affirmative = to_check in ['true', 'yes']
+            is_text_negative = to_check in ['false', 'no', "none", '']
+            is_special_number_affirmative = input in ['1']
+            is_special_number_negative = input in ['0', '-1']
+
+            if is_text_affirmative or is_special_number_affirmative:
+                return True
+            elif is_text_negative or is_special_number_negative:
+                return False
+            elif to_check.isdecimal():
+                return bool(int(input))
+            else:
+                return bool(input)
+        case builtins.int | builtins.float:
+            if input == -1:
+                return False
+            else:
+                return bool(input)
+        case _:
+            return bool(input)

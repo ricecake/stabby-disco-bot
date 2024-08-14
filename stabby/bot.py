@@ -50,6 +50,7 @@ async def interaction_must_reply(interaction: discord.Interaction, message: str,
 def apply_defaults(interaction: discord.Interaction, request_params: dict) -> dict:
     global_defaults = config.global_defaults.model_dump()
 
+    server_prefs = None
     if interaction.guild_id is not None:
         server_prefs = ServerPreferences.get_server_preferences(
             interaction.guild_id)
@@ -64,7 +65,25 @@ def apply_defaults(interaction: discord.Interaction, request_params: dict) -> di
     for defs in (global_defaults, server_defaults, user_defaults):
         default_params.update(defs)
 
-    return apply_default_params(request_params, default_params)
+    new_params = apply_default_params(request_params, default_params)
+
+    new_params['negative_prompt'] = subtract_prompts(
+        new_params.get('negative_prompt'),
+        new_params.get('prompt')
+    )
+
+    if server_prefs is not None:
+        new_params['prompt'] = subtract_prompts(
+            new_params.get('prompt'),
+            server_prefs.required_negative_prompt
+        )
+
+        new_params['negative_prompt'] = union_prompts(
+            new_params.get('negative_prompt'),
+            server_prefs.required_negative_prompt
+        )
+
+    return new_params
 
 
 async def generation_interaction(
@@ -89,10 +108,7 @@ async def generation_interaction(
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
     try:
-        saved_server_prefs = ServerPreferences.get_server_preferences(interaction.guild.id)
         with db_session() as session:
-            session.add(saved_server_prefs)
-
             saved_style = session.scalar(select(Style).where(Style.user_id == interaction.user.id).where(Style.name == style))
             if saved_style:
                 if saved_style.prompt:
@@ -149,21 +165,6 @@ async def generation_interaction(
             )
             new_params = apply_defaults(interaction, params)
 
-            new_params['negative_prompt'] = subtract_prompts(
-                new_params.get('negative_prompt'),
-                new_params.get('prompt')
-            )
-
-            new_params['prompt'] = subtract_prompts(
-                new_params.get('prompt'),
-                saved_server_prefs.required_negative_prompt
-            )
-
-            new_params['negative_prompt'] = union_prompts(
-                new_params.get('negative_prompt'),
-                saved_server_prefs.required_negative_prompt
-            )
-
             file, reprompt_struct = await generation.generate_ai_image(
                 http_client=http_client,
                 **new_params
@@ -176,6 +177,8 @@ async def generation_interaction(
                 wait=True,
                 silent=True,
             )  # type: ignore[call-overload]
+            # TODO add various buttons for regenerate, censor, get-params, add-overlay, without overlay and whatnot.
+            # That should make it easier to cut down on context menu stuff
 
             session.add(gen_instance)
             gen_instance.message_id = message.id
@@ -549,6 +552,7 @@ async def set_server_preferences(
         default_negative_prompt: Optional[str] = None,
 ):
     """Set server specific defaults and policies for the bot to adhere to"""
+    # TODO make all the preference stuff live in modals
     await interaction.response.defer(thinking=True, ephemeral=True)
     settings = {
         'required_negative_prompt': required_negative_prompt,
@@ -810,50 +814,81 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
 
 
 class Tweak(discord.ui.Modal, title='Tweak prompt'):
-    def __init__(self, message_id: int, prompt: Optional[str] = None, negative_prompt: Optional[str] = None, seed: int = -1, **kwargs) -> None:
+    def __init__(
+            self,
+            interaction: discord.Interaction,
+            message: discord.Message,
+    ) -> None:
         super().__init__()
 
+        message_id = message.id
+
+        with db_session() as session:
+            generation = session.scalar(
+                select(Generation).where(Generation.message_id == message_id))
+
+            if generation is None:
+                generation = Generation(prompt=message.clean_content)
+
+            regen_params = generation.regen_params()
+
+        params = apply_defaults(interaction=interaction, request_params=regen_params)
+
+        for child in self.children:
+            if isinstance(child, discord.ui.TextInput):
+                child.default = params.get(child.custom_id)
+
         self.message_id = message_id
-        self.prompt.default = prompt
-        self.negative_prompt.default = negative_prompt
-        self.seed.default = str(seed)
+        self.params = params
 
     prompt = discord.ui.TextInput(
+        custom_id='prompt',
         label='Prompt',
         style=discord.TextStyle.long,
-        placeholder=karma_grammar.generate(),
         required=True,
     )
 
     negative_prompt = discord.ui.TextInput(
+        custom_id='negative_prompt',
         label='Negative Prompt',
         style=discord.TextStyle.paragraph,
+        required=False,
     )
 
     seed = discord.ui.TextInput(
+        custom_id='seed',
         label='Seed',
         style=discord.TextStyle.short,
+        required=False,
+    )
+
+    overlay = discord.ui.TextInput(
+        custom_id='overlay',
+        label='Overlay',
+        style=discord.TextStyle.short,
+        required=False,
+    )
+
+    tiling = discord.ui.TextInput(
+        custom_id='tiling',
+        label='Tile',
+        style=discord.TextStyle.short,
+        required=False,
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message('Please hold...', ephemeral=True)
-        params = dict(
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        params = text_utils.filter_params(dict(
             prompt=self.prompt.value,
-            negative_prompt=self.negative_prompt.value,
-            seed=int(self.seed.value) or -1
-        )
+            negative_prompt=self.negative_prompt.value or None,
 
-        with db_session() as session:
-            message_id = self.message_id
-            saved_generation = session.scalar(
-                select(Generation).where(Generation.message_id == message_id))
-            if saved_generation is None:
-                await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
-                return
+            seed=int(self.seed.value) if self.seed.value.isdigit() else -1,
 
-            regen_params = saved_generation.regen_params()
+            overlay=text_utils.convert_to_bool(self.overlay.value),
+            tiling=text_utils.convert_to_bool(self.tiling.value),
+        ))
 
-            params = apply_default_params(params, regen_params)
+        params = apply_default_params(params, self.params)
 
         await generation_interaction(
             interaction,
@@ -867,19 +902,7 @@ class Tweak(discord.ui.Modal, title='Tweak prompt'):
         traceback.print_exception(type(error), error, error.__traceback__)
 
 
-@client.tree.context_menu(name='Tweak Prompt')
-@only_self_messages
-@db_ratelimiter
-async def fetch_generation_params(interaction: discord.Interaction, message: discord.Message):
-    with db_session() as session:
-        message_id = message.id
-        saved_generation = session.scalar(
-            select(Generation).where(Generation.message_id == message_id))
-        if saved_generation is None:
-            await interaction.response.send_message("Unfortunately, that one isn't in my database", ephemeral=True)
-            return
-
-        regen_params = saved_generation.regen_params()
-        await interaction.response.send_modal(Tweak(message_id, **regen_params))
-        display = stabby.text_utils.prettify_params(saved_generation.regen_params())
-        await interaction.followup.send(display)
+@client.tree.context_menu(name='Promptificate')
+@generate_ratelimiter
+async def promptificate(interaction: discord.Interaction, message: discord.Message):
+    await interaction.response.send_modal(Tweak(interaction, message))
