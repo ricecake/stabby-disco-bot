@@ -266,6 +266,21 @@ class StabbyDiscoBot(discord.Client):
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
 
+    async def on_guild_join(self, guild):
+        logger.info("Joined guild")
+
+    async def on_ready(self):
+        assert client.user is not None
+        logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
+        check_server_status.start()
+        logger.info('------')
+
+    async def on_resumed(self):
+        logger.info("Resuming session")
+
+    async def on_disconnect(self):
+        logger.info("Handling disconnect")
+
 
 client = StabbyDiscoBot()
 
@@ -290,30 +305,6 @@ async def check_server_status():
 
     if server_status.observed_online:
         server_status.offline_count = 0
-
-
-@client.event
-async def on_guild_join(guild):
-    logger.info("Joined guild")
-
-
-@client.event
-async def on_ready():
-    assert client.user is not None
-    logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
-    check_server_status.start()
-    logger.info('------')
-
-
-@client.event
-async def on_resumed():
-    logger.info("Resuming session")
-
-
-@client.event
-async def on_disconnect():
-    logger.info("Handling disconnect")
-
 
 @client.tree.command()
 @ephemeral_ratelimiter
