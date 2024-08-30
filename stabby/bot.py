@@ -4,7 +4,6 @@ from typing import Callable, Literal, Optional, List, cast, Type
 
 import logging
 import io
-import aiohttp
 import discord
 from discord import File, app_commands
 from discord.ext import tasks
@@ -20,7 +19,6 @@ from stabby.text_utils import union_prompts
 from stabby.text_utils import subtract_prompts
 from stabby.text_utils import apply_default_params
 
-http_client: Optional[aiohttp.ClientSession] = None
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby')
 karma_grammar = grammar.Grammar(config.karma_grammar)
@@ -85,6 +83,55 @@ def apply_defaults(interaction: discord.Interaction, request_params: dict) -> di
 
     return new_params
 
+class ImageActions(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.running = False
+
+    # @discord.ui.button(label="Love it!", emoji="💚")
+    # async def like_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    #     # await interaction.response.edit_message(content=f"This is an edited button response!")
+    #     await interaction.response.send_message("D'aw, thanks!", ephemeral=True)
+
+    @discord.ui.button(label="Again! Again!", emoji="🔁")
+    async def again_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self.running:
+            return
+
+        self.running = True
+        button.disabled = self.running
+        button.label = 'Running...'
+
+        await interaction.response.edit_message(view=self)
+
+        regen_params = None
+        with db_session() as session:
+            message_id = None
+            if interaction.message:
+                message_id = interaction.message.id
+
+            saved_generation = None
+            if message_id:
+                saved_generation = session.scalar(
+                    select(Generation).where(Generation.message_id == message_id))
+            if saved_generation is None:
+                await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+                return
+            regen_params = saved_generation.regen_params()
+
+        regen_params['seed'] = -1
+        await generation_interaction(
+            interaction,
+            **regen_params
+        )
+
+        self.running = False
+        button.disabled = self.running
+        button.label = "Again! Again!"
+
+        if interaction.message:
+            await interaction.message.edit(view=self)
+
 
 async def generation_interaction(
     interaction: discord.Interaction,
@@ -103,7 +150,6 @@ async def generation_interaction(
     steps: Optional[int] = None,
 ) -> None:
     assert interaction.guild is not None
-    assert http_client is not None
 
     if not interaction.response.is_done():
         await interaction.response.defer(ephemeral=True)
@@ -166,7 +212,7 @@ async def generation_interaction(
             new_params = apply_defaults(interaction, params)
 
             file, reprompt_struct = await generation.generate_ai_image(
-                http_client=http_client,
+                http_client=await stabby.get_http_client(),
                 **new_params
             )
             await interaction.followup.send(stabby.text_utils.prettify_params(reprompt_struct), ephemeral=True)
@@ -176,6 +222,7 @@ async def generation_interaction(
                 file=file,
                 wait=True,
                 silent=True,
+                view=ImageActions(),
             )  # type: ignore[call-overload]
             # TODO add various buttons for regenerate, censor, get-params, add-overlay, without overlay and whatnot.
             # That should make it easier to cut down on context menu stuff
@@ -226,7 +273,7 @@ client = StabbyDiscoBot()
 @tasks.loop(seconds=5)
 async def check_server_status():
     available = server_status.available
-    online = await generation.ping_server(http_client) if http_client else False
+    online = await generation.ping_server(await stabby.get_http_client())
     if online != server_status.observed_online:
         logger.info(f"Server status changed: online={online}")
         server_status.observed_online = online
@@ -254,8 +301,6 @@ async def on_guild_join(guild):
 async def on_ready():
     assert client.user is not None
     logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
-    global http_client
-    http_client = aiohttp.ClientSession()
     check_server_status.start()
     logger.info('------')
 
@@ -263,15 +308,11 @@ async def on_ready():
 @client.event
 async def on_resumed():
     logger.info("Resuming session")
-    global http_client
-    http_client = aiohttp.ClientSession()
 
 
 @client.event
 async def on_disconnect():
     logger.info("Handling disconnect")
-    if http_client is not None:
-        await http_client.close()
 
 
 @client.tree.command()
