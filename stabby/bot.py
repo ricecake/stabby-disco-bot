@@ -854,34 +854,7 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
     await interaction.followup.send('Sorry about the upset!', ephemeral=True)
 
 
-class Tweak(discord.ui.Modal, title='Tweak prompt'):
-    def __init__(
-            self,
-            interaction: discord.Interaction,
-            message: discord.Message,
-    ) -> None:
-        super().__init__()
-
-        message_id = message.id
-
-        with db_session() as session:
-            generation = session.scalar(
-                select(Generation).where(Generation.message_id == message_id))
-
-            if generation is None:
-                generation = Generation(prompt=message.clean_content)
-
-            regen_params = generation.regen_params()
-
-        params = apply_defaults(interaction=interaction, request_params=regen_params)
-
-        for child in self.children:
-            if isinstance(child, discord.ui.TextInput):
-                child.default = params.get(child.custom_id)
-
-        self.message_id = message_id
-        self.params = params
-
+class Tweak(discord.ui.Modal):
     prompt = discord.ui.TextInput(
         custom_id='prompt',
         label='Prompt',
@@ -917,6 +890,37 @@ class Tweak(discord.ui.Modal, title='Tweak prompt'):
         required=False,
     )
 
+    def __init__(
+            self,
+            interaction: discord.Interaction,
+            message: discord.Message,
+            title: str,
+    ) -> None:
+        super().__init__(
+            title=title,
+            timeout=None,
+        )
+
+        message_id = message.id
+
+        with db_session() as session:
+            generation = session.scalar(
+                select(Generation).where(Generation.message_id == message_id))
+
+            if generation is None:
+                generation = Generation(prompt=message.clean_content)
+
+            regen_params = generation.regen_params()
+
+        params = apply_defaults(interaction=interaction, request_params=regen_params)
+
+        for child in self.children:
+            if isinstance(child, discord.ui.TextInput):
+                child.default = params.get(child.custom_id)
+
+        self.message_id = message_id
+        self.params = params
+
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
         params = text_utils.filter_params(dict(
@@ -946,4 +950,4 @@ class Tweak(discord.ui.Modal, title='Tweak prompt'):
 @client.tree.context_menu(name='Promptificate')
 @generate_ratelimiter
 async def promptificate(interaction: discord.Interaction, message: discord.Message):
-    await interaction.response.send_modal(Tweak(interaction, message))
+    await interaction.response.send_modal(Tweak(interaction, message, 'Promptificate'))
