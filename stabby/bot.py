@@ -1,11 +1,11 @@
 import re
 import traceback
-from typing import Callable, Literal, Optional, List, cast, Type
+from typing import Any, Awaitable, Callable, Literal, Optional, List, cast, Type
 
 import logging
 import io
 import discord
-from discord import File, app_commands
+from discord import Emoji, File, Message, PartialEmoji, app_commands
 from discord.ext import tasks
 from functools import wraps
 
@@ -83,54 +83,103 @@ def apply_defaults(interaction: discord.Interaction, request_params: dict) -> di
 
     return new_params
 
+
+def image_action_button(label: Optional[str] = None, emoji: Optional[str | Emoji | PartialEmoji] = None):
+    def decorator(func: Callable[['ImageActions', discord.Interaction, Message, dict[Any, Any]], Awaitable[Optional[dict]]]):
+        @discord.ui.button(label=label, emoji=emoji)
+        async def wrapper(self: 'ImageActions', interaction: discord.Interaction, button: discord.ui.Button):
+            if self.running:
+                return
+
+            self.running = True
+
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = self.running
+
+            if interaction.message is None:
+                return
+
+            message = interaction.message
+
+            await message.edit(view=self)
+
+            regen_params = None
+            with db_session() as session:
+
+                message_id = interaction.message.id
+
+                saved_generation = session.scalar(
+                    select(Generation).where(Generation.message_id == message_id))
+
+                if saved_generation is None:
+                    await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+                    return
+
+                regen_params = saved_generation.regen_params()
+
+            edit_params = await func(self, interaction, message, regen_params)
+
+            if edit_params is None:
+                edit_params = {}
+
+            edit_params.update(view=self)
+
+            self.running = False
+
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = self.running
+
+            await message.edit(**edit_params)
+
+        return wrapper
+    return decorator
+
 class ImageActions(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.running = False
 
-    # @discord.ui.button(label="Love it!", emoji="💚")
-    # async def like_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-    #     # await interaction.response.edit_message(content=f"This is an edited button response!")
-    #     await interaction.response.send_message("D'aw, thanks!", ephemeral=True)
-
-    @discord.ui.button(label="Again! Again!", emoji="🔁")
-    async def again_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if self.running:
-            return
-
-        self.running = True
-        button.disabled = self.running
-        button.label = 'Running...'
-
-        await interaction.response.edit_message(view=self)
-
-        regen_params = None
-        with db_session() as session:
-            message_id = None
-            if interaction.message:
-                message_id = interaction.message.id
-
-            saved_generation = None
-            if message_id:
-                saved_generation = session.scalar(
-                    select(Generation).where(Generation.message_id == message_id))
-            if saved_generation is None:
-                await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
-                return
-            regen_params = saved_generation.regen_params()
-
+    @image_action_button(label="Again! Again!", emoji="🔁")
+    async def again_button(self, interaction: discord.Interaction, message: Message, regen_params: dict[Any, Any]):
         regen_params['seed'] = -1
         await generation_interaction(
             interaction,
             **regen_params
         )
 
-        self.running = False
-        button.disabled = self.running
-        button.label = "Again! Again!"
+    @image_action_button(label="Edit", emoji="✏️")
+    async def edit_button(self, interaction: discord.Interaction, message: Message, regen_params: dict[Any, Any]):
+        await interaction.response.send_modal(Tweak(interaction, message, 'Promptificate'))
 
-        if interaction.message:
-            await interaction.message.edit(view=self)
+    @image_action_button(label="Enhance", emoji="🔎")
+    async def enhance(self, interaction: discord.Interaction, message: Message, regen_params: dict[Any, Any]):
+        if regen_params['steps'] >= config.max_steps:
+            await interaction.followup.send("I'm afraid I won't put more than {} steps into an image.".format(config.max_steps), ephemeral=True)
+            return
+
+        regen_params['steps'] = min(2 * regen_params['steps'], config.max_steps)
+        await generation_interaction(
+            interaction,
+            **regen_params
+        )
+
+    @image_action_button(label="Censor", emoji="🤬")
+    async def censor(self, interaction: discord.Interaction, message: Message, regen_params: dict[Any, Any]) -> dict:
+        new_files = []
+        for file in message.attachments:
+            buf = io.BytesIO()
+            await file.save(buf)
+            new_file = File(fp=buf, filename=file.filename,
+                            description=file.description, spoiler=True)
+            new_files.append(new_file)
+
+        return dict(attachments=new_files)
+
+# add support for processing an image for ai-ify
+# add support for doing things based on emoji
+#     make emoji to action map configurable to owner
 
 
 async def generation_interaction(
@@ -266,6 +315,21 @@ class StabbyDiscoBot(discord.Client):
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
 
+    async def on_guild_join(self, guild):
+        logger.info("Joined guild")
+
+    async def on_ready(self):
+        assert client.user is not None
+        logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
+        check_server_status.start()
+        logger.info('------')
+
+    async def on_resumed(self):
+        logger.info("Resuming session")
+
+    async def on_disconnect(self):
+        logger.info("Handling disconnect")
+
 
 client = StabbyDiscoBot()
 
@@ -290,30 +354,6 @@ async def check_server_status():
 
     if server_status.observed_online:
         server_status.offline_count = 0
-
-
-@client.event
-async def on_guild_join(guild):
-    logger.info("Joined guild")
-
-
-@client.event
-async def on_ready():
-    assert client.user is not None
-    logger.info(f'Logged in as {client.user} (ID: {client.user.id})')
-    check_server_status.start()
-    logger.info('------')
-
-
-@client.event
-async def on_resumed():
-    logger.info("Resuming session")
-
-
-@client.event
-async def on_disconnect():
-    logger.info("Handling disconnect")
-
 
 @client.tree.command()
 @ephemeral_ratelimiter
@@ -500,84 +540,6 @@ async def generate(
 
 @client.tree.command()
 @app_commands.describe(
-    prompt="The prompt to generate an image based off of",
-    negative_prompt="The negative prompt to keep things out of the image",
-    recycle_seed='Use the same seed as the prompt being regenerated',
-    restore_faces="Fix faces in post processing",
-    spoiler="Hide image behind spoiler filter",
-    overlay="Should a text overlay be added with the image prompt?",
-    tiling="Request that image tile",
-    message_id='The ID of the message to regenerate',
-)
-@app_commands.autocomplete(
-    prompt=make_autocompleter('prompt', limit=5),
-    negative_prompt=make_autocompleter('negative_prompt', limit=5),
-)
-@generate_ratelimiter
-async def regen(
-        interaction: discord.Interaction,
-        prompt: Optional[str] = None,
-        negative_prompt: Optional[str] = None,
-        recycle_seed: Optional[bool] = None,
-        restore_faces: Optional[bool] = None,
-        spoiler: Optional[bool] = None,
-        overlay: Optional[bool] = None,
-        tiling: Optional[bool] = None,
-        message_id: Optional[str] = None,
-):
-    """Regenerate an image from a previous generation"""
-    await interaction.response.defer(thinking=True, ephemeral=True)
-    image_message_id = None
-    if message_id is not None:
-        image_message_id = int(message_id)
-
-    params = {
-        field: value for field, value in dict(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            restore_faces=restore_faces,
-            spoiler=spoiler,
-            overlay=overlay,
-            tiling=tiling,
-        ).items() if value is not None
-    }
-
-    stmnt = None
-    if image_message_id:
-        stmnt = select(Generation).where(Generation.message_id == image_message_id).order_by(Generation.created_at.desc())
-    else:
-        stmnt = select(Generation).where(Generation.user_id == interaction.user.id).order_by(Generation.created_at.desc())
-
-    regen_params = None
-    with db_session() as session:
-        previous_gen = session.scalar(stmnt)
-        if previous_gen is None:
-            await interaction.followup.send("I can't seem to find a message to regenerate...")
-            return
-
-        regen_params = previous_gen.regen_params()
-        regen_params = apply_default_params(params, regen_params)
-
-    user_prefs = Preferences.get_user_preferences(user_id=interaction.user.id)
-
-    if overlay is None and user_prefs.regen_preserves_overlay is not None and not user_prefs.regen_preserves_overlay:
-        regen_params['overlay'] = False
-
-    if recycle_seed is not None:
-        if not recycle_seed:
-            regen_params['seed'] = -1
-    elif user_prefs.regen_recycles_seed is not None:
-        if not user_prefs.regen_recycles_seed:
-            regen_params['seed'] = -1
-
-    await generation_interaction(
-        interaction,
-        **regen_params
-    )
-
-
-@client.tree.command()
-@app_commands.describe(
     default_negative_prompt="A negative prompt to apply if none is provided",
     required_negative_prompt="A negative prompt to append to all prompts",
 )
@@ -643,7 +605,7 @@ async def unset_server_preferences(
     spoiler='If your images should be hidden by spoiler tags',
     tiling='If your images should attempt to create a clean tiling',
     restore_faces='If your images should run a face defect correction process',
-    use_refiner='If the images should have a few itterations of a refiner network run to increase fidelity',
+    use_refiner='If the images should have a few iterations of a refiner network run to increase fidelity',
     regen_recycles_seed='If a regeneration request should default to using the same seed',
     regen_preserves_overlay='If a regeneration request should use the same settings for overlay as the original',
 )
@@ -768,6 +730,9 @@ async def create_style(
 async def ai_message_content(interaction: discord.Interaction, message: discord.Message):
     prompt = message.clean_content
     negative = "boring, dull, NSFW, porn, nudity"
+    # Something to find if there's an image, and then do some form of img2img
+    # if no text, then generate a random nice string
+    # do same for promptificate
 
     await generation_interaction(interaction, prompt=prompt, negative_prompt=negative)
 
@@ -854,34 +819,7 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
     await interaction.followup.send('Sorry about the upset!', ephemeral=True)
 
 
-class Tweak(discord.ui.Modal, title='Tweak prompt'):
-    def __init__(
-            self,
-            interaction: discord.Interaction,
-            message: discord.Message,
-    ) -> None:
-        super().__init__()
-
-        message_id = message.id
-
-        with db_session() as session:
-            generation = session.scalar(
-                select(Generation).where(Generation.message_id == message_id))
-
-            if generation is None:
-                generation = Generation(prompt=message.clean_content)
-
-            regen_params = generation.regen_params()
-
-        params = apply_defaults(interaction=interaction, request_params=regen_params)
-
-        for child in self.children:
-            if isinstance(child, discord.ui.TextInput):
-                child.default = params.get(child.custom_id)
-
-        self.message_id = message_id
-        self.params = params
-
+class Tweak(discord.ui.Modal):
     prompt = discord.ui.TextInput(
         custom_id='prompt',
         label='Prompt',
@@ -917,6 +855,37 @@ class Tweak(discord.ui.Modal, title='Tweak prompt'):
         required=False,
     )
 
+    def __init__(
+            self,
+            interaction: discord.Interaction,
+            message: discord.Message,
+            title: str,
+    ) -> None:
+        super().__init__(
+            title=title,
+            timeout=None,
+        )
+
+        message_id = message.id
+
+        with db_session() as session:
+            generation = session.scalar(
+                select(Generation).where(Generation.message_id == message_id))
+
+            if generation is None:
+                generation = Generation(prompt=message.clean_content)
+
+            regen_params = generation.regen_params()
+
+        params = apply_defaults(interaction=interaction, request_params=regen_params)
+
+        for child in self.children:
+            if isinstance(child, discord.ui.TextInput):
+                child.default = params.get(child.custom_id)
+
+        self.message_id = message_id
+        self.params = params
+
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
         params = text_utils.filter_params(dict(
@@ -946,4 +915,4 @@ class Tweak(discord.ui.Modal, title='Tweak prompt'):
 @client.tree.context_menu(name='Promptificate')
 @generate_ratelimiter
 async def promptificate(interaction: discord.Interaction, message: discord.Message):
-    await interaction.response.send_modal(Tweak(interaction, message))
+    await interaction.response.send_modal(Tweak(interaction, message, 'Promptificate'))

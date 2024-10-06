@@ -8,5 +8,14 @@
 	],
 	"python.testing.pytestEnabled": false,
 	"python.testing.unittestEnabled": true,
-	"python.testing.autoTestDiscoverOnSaveEnabled": true
+	"python.testing.autoTestDiscoverOnSaveEnabled": true,
+	"cSpell.words": [
+		"autocompleter",
+		"bezos",
+		"prefs",
+		"promptificate",
+		"regen",
+		"reprompt",
+		"stabby"
+	]
 }
