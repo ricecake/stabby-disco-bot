@@ -85,25 +85,28 @@ def apply_defaults(interaction: discord.Interaction, request_params: dict) -> di
 
 
 def image_action_button(label: Optional[str] = None, emoji: Optional[str | Emoji | PartialEmoji] = None):
-    def decorator(func: Callable[[ImageActions, discord.Interaction, Message, dict[Any, Any]], Awaitable[Optional[dict]]]):
+    def decorator(func: Callable[['ImageActions', discord.Interaction, Message, dict[Any, Any]], Awaitable[Optional[dict]]]):
         @discord.ui.button(label=label, emoji=emoji)
-        async def wrapper(self, interaction: discord.Interaction, button: discord.ui.Button):
+        async def wrapper(self: 'ImageActions', interaction: discord.Interaction, button: discord.ui.Button):
             if self.running:
                 return
 
             self.running = True
-            button.disabled = self.running
-            button.label = 'Running...'
 
-            await interaction.response.edit_message(view=self)
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = self.running
+
+            if interaction.message is None:
+                return
+
+            message = interaction.message
+
+            await message.edit(view=self)
 
             regen_params = None
-            message = None
             with db_session() as session:
-                if interaction.message is None:
-                    return
 
-                message = interaction.message
                 message_id = interaction.message.id
 
                 saved_generation = session.scalar(
@@ -123,8 +126,10 @@ def image_action_button(label: Optional[str] = None, emoji: Optional[str | Emoji
             edit_params.update(view=self)
 
             self.running = False
-            button.disabled = self.running
-            button.label = label
+
+            for child in self.children:
+                if isinstance(child, discord.ui.Button):
+                    child.disabled = self.running
 
             await message.edit(**edit_params)
 
@@ -162,8 +167,6 @@ class ImageActions(discord.ui.View):
 
     @image_action_button(label="Censor", emoji="🤬")
     async def censor(self, interaction: discord.Interaction, message: Message, regen_params: dict[Any, Any]) -> dict:
-        await interaction.response.defer(ephemeral=True)
-
         new_files = []
         for file in message.attachments:
             buf = io.BytesIO()
