@@ -5,5 +5,4 @@ pillow
 aiohttp[speedups]
 pydantic
 sqlalchemy
-# flask[async]
 quart

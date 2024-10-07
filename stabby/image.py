@@ -1,16 +1,23 @@
+from typing import Optional
 from PIL import ImageFont
+from PIL import ImageDraw
 
 from stabby import conf
 config = conf.load_conf()
 
 
-def add_text_to_image(draw, image_height, image_width, title_text="", artist_text="",
-                      title_location=25,
-                      artist_location=5,
-                      padding=5,
-                      opacity=100,
-                      title_size=25,
-                      artist_size=15):
+def add_text_to_image(
+        draw: ImageDraw.ImageDraw,
+        image_height: int,
+        image_width: int,
+        title_text: Optional[str] = "",
+        artist_text: Optional[str] = "",
+        title_location=25,
+        artist_location=5,
+        padding=5,
+        opacity=100,
+        title_size=25,
+        artist_size=15) -> ImageDraw.ImageDraw:
 
     title_font = ImageFont.truetype(config.title_font, size=title_size)
     artist_font = ImageFont.truetype(config.artist_font, size=artist_size)
@@ -50,10 +57,27 @@ def add_text_to_image(draw, image_height, image_width, title_text="", artist_tex
         title_outline = max(2, min(title_size // 5, 4))
         artist_outline = max(2, min(artist_size // 5, 4))
 
-        draw.text((image_width / 2, image_height - title_location), title_text, font=title_font,
-                  anchor="mb", fill=(255, 255, 255), stroke_width=title_outline, stroke_fill=(0, 0, 0))
-        draw.text((image_width / 2, image_height - artist_location), artist_text, font=artist_font,
-                  anchor="mb", fill=(255, 255, 255), stroke_width=artist_outline, stroke_fill=(0, 0, 0))
+        if title_text:
+            draw.text(
+                (image_width / 2, image_height - title_location),
+                title_text,
+                font=title_font,
+                anchor="mb",
+                fill=(255, 255, 255),
+                stroke_width=title_outline,
+                stroke_fill=(0, 0, 0)
+            )
+
+        if artist_text:
+            draw.text(
+                (image_width / 2, image_height - artist_location),
+                artist_text,
+                font=artist_font,
+                anchor="mb",
+                fill=(255, 255, 255),
+                stroke_width=artist_outline,
+                stroke_fill=(0, 0, 0)
+            )
 
     return draw
 

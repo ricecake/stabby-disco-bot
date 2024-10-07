@@ -47,7 +47,9 @@ async def generate_ai_image(
         height: int = 1024,
         seed: int = -1,
         cfg_scale: float = 7.0,
-        steps: int = 20) -> tuple[File, dict[str, Any]]:
+        steps: int = 20,
+        suppress_description: bool = False,
+        resize_dimensions: Optional[tuple[int, int]] = None) -> tuple[File, dict[str, Any]]:
     url = config.sd_host
 
     payload = {
@@ -111,8 +113,15 @@ async def generate_ai_image(
 
         if overlay:
             title, desc = prompt_to_overlay(prompt)
+            if suppress_description:
+                desc = None
+
             canvas = ImageDraw.Draw(working_image, 'RGBA')
             image.add_text_to_image(canvas, height, width, title, desc)
+
+        if resize_dimensions is not None:
+            logger.info("Resizing to {}".format(resize_dimensions))
+            working_image = working_image.resize(size=resize_dimensions)
 
         buf = io.BytesIO()
         working_image.save(buf, format='PNG')
