@@ -5,7 +5,7 @@ import json
 import re
 import io
 import aiohttp
-from PIL import Image, ImageDraw
+from PIL import Image
 from PIL.ImageEnhance import Contrast, Sharpness, Brightness, Color
 from PIL.ImageFilter import EDGE_ENHANCE
 from hashlib import sha512
