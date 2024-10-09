@@ -147,8 +147,7 @@ async def generate_ai_image(
             if resize_dimensions is not None:
                 width, height = resize_dimensions
 
-            canvas = ImageDraw.Draw(working_image, 'RGBA')
-            image.add_text_to_image(canvas, height, width, title, desc)
+            image.add_text_to_image(working_image, height, width, title, desc)
 
         buf = io.BytesIO()
         working_image.save(buf, format='PNG')

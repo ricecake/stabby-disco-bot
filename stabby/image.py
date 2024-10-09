@@ -1,5 +1,5 @@
 from typing import Optional
-from PIL import ImageFont
+from PIL import ImageFont, Image
 from PIL import ImageDraw
 
 from stabby import conf
@@ -7,7 +7,7 @@ config = conf.load_conf()
 
 
 def add_text_to_image(
-        draw: ImageDraw.ImageDraw,
+        image: Image.Image,
         image_height: int,
         image_width: int,
         title_text: Optional[str] = "",
@@ -18,6 +18,7 @@ def add_text_to_image(
         opacity=100,
         title_size=25,
         artist_size=15) -> ImageDraw.ImageDraw:
+    draw = ImageDraw.Draw(image)
 
     title_font = ImageFont.truetype(config.title_font, size=title_size)
     artist_font = ImageFont.truetype(config.artist_font, size=artist_size)
@@ -52,7 +53,8 @@ def add_text_to_image(
                                       title_text, font=title_font, anchor="mb")
             title_size -= 1
 
-        draw.rectangle(draw_box, fill=(255, 255, 255, opacity))
+        if opacity > 0 and image.has_transparency_data:
+            draw.rectangle(draw_box, fill=(255, 255, 255, opacity))
 
         title_outline = max(2, min(title_size // 5, 4))
         artist_outline = max(2, min(artist_size // 5, 4))
