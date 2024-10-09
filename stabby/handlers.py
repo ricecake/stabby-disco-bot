@@ -133,6 +133,7 @@ async def generate_image():
     logger.info(request.args)
     width = int(request.args.get('w') or 1024)
     height = int(request.args.get('h') or 1024)
+    palette = request.args.get('palette')
 
     prompt = request.args.get("prompt") or make_random_prompt(request.args)
 
@@ -146,6 +147,7 @@ async def generate_image():
         height=gen_height,
         suppress_description=True,
         resize_dimensions=(width, height),
+        palette=palette,
     )
 
     return await send_file(

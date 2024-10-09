@@ -6,6 +6,8 @@ import re
 import io
 import aiohttp
 from PIL import Image, ImageDraw
+from PIL.ImageEnhance import Contrast, Sharpness, Brightness, Color
+from PIL.ImageFilter import EDGE_ENHANCE
 from hashlib import sha512
 from discord import File
 import logging
@@ -49,7 +51,9 @@ async def generate_ai_image(
         cfg_scale: float = 7.0,
         steps: int = 20,
         suppress_description: bool = False,
-        resize_dimensions: Optional[tuple[int, int]] = None) -> tuple[File, dict[str, Any]]:
+        resize_dimensions: Optional[tuple[int, int]] = None,
+        palette: Optional[str] = None,
+) -> tuple[File, dict[str, Any]]:
     url = config.sd_host
 
     payload = {
@@ -111,17 +115,40 @@ async def generate_ai_image(
 
         working_image = Image.open(image_bytes)
 
+        if palette is not None:
+            palette_seq = list(base64.urlsafe_b64decode(palette))
+
+            palette_image = Image.new('P', (1, 1))
+            palette_image.putpalette(palette_seq)
+
+            for filter in [EDGE_ENHANCE]:
+                working_image = working_image.filter(filter)
+
+            for enhancement, level in (
+                (Brightness, 1.1),
+                (Color, 1.1),
+                (Sharpness, 2),
+                (Contrast, 1.6),
+            ):
+                enhancer = enhancement(working_image)
+                working_image = enhancer.enhance(level)
+
+            working_image = working_image.convert('RGB').quantize(palette=palette_image)
+
+        if resize_dimensions is not None:
+            logger.info("Resizing to {}".format(resize_dimensions))
+            working_image = working_image.resize(size=resize_dimensions)
+
         if overlay:
             title, desc = prompt_to_overlay(prompt)
             if suppress_description:
                 desc = None
 
+            if resize_dimensions is not None:
+                width, height = resize_dimensions
+
             canvas = ImageDraw.Draw(working_image, 'RGBA')
             image.add_text_to_image(canvas, height, width, title, desc)
-
-        if resize_dimensions is not None:
-            logger.info("Resizing to {}".format(resize_dimensions))
-            working_image = working_image.resize(size=resize_dimensions)
 
         buf = io.BytesIO()
         working_image.save(buf, format='PNG')
