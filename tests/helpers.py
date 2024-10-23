@@ -1,50 +1,62 @@
-from typing import Any, Callable, Iterable, Tuple, List, Dict, Text, overload
+from typing import Any, Callable, Sequence, Tuple, List, Dict, Text, overload
 from functools import wraps
 from inspect import signature
 import unittest
 
+import collections.abc
+
+
+CaseTupleSequence = Sequence[Tuple[Any, ...]]
+CaseDictSequence = Sequence[Dict[Text, Any]]
+CaseTupleFunc = Callable[[], CaseTupleSequence]
+CaseDictFunc = Callable[[], CaseDictSequence]
+CaseType = CaseTupleSequence | CaseDictSequence | CaseTupleFunc | CaseDictFunc
 
 @overload
-def expand_test_cases(cases: Iterable[Tuple], f: Callable) -> List[Dict[Text, Any]]:
+def expand_test_cases(cases: CaseTupleSequence, f: Callable) -> Sequence[Dict[Text, Any]]:
     ...
 @overload
-def expand_test_cases(cases: Iterable[Dict[Text, Any]], f: Callable) -> List[Dict[Text, Any]]:
+def expand_test_cases(cases: CaseDictSequence, f: Callable) -> Sequence[Dict[Text, Any]]:
     ...
 @overload
-def expand_test_cases(cases: Callable[[], Iterable[Tuple]], f: Callable) -> List[Dict[Text, Any]]:
+def expand_test_cases(cases: CaseTupleFunc, f: Callable) -> Sequence[Dict[Text, Any]]:
     ...
 @overload
-def expand_test_cases(cases: Callable[[], Iterable[Dict[Text, Any]]], f: Callable) -> List[Dict[Text, Any]]:
+def expand_test_cases(cases: CaseDictFunc, f: Callable) -> Sequence[Dict[Text, Any]]:
     ...
-def expand_test_cases(cases, f) -> List[Dict[Text, Any]]:
-    if callable(cases):
-        gen_cases = list(cases())
-        return expand_test_cases(gen_cases)  # type: ignore
-    elif isinstance(cases[0], dict):
-        return cases
+def expand_test_cases(cases: CaseType, f) -> Sequence[Dict[Text, Any]]:
+    match cases:
+        case collections.abc.Callable():
+            gen_cases = cases()
+            return expand_test_cases(gen_cases)  # type: ignore
+        case [Tuple(), *_]:
+            sig = signature(f)
 
-    sig = signature(f)
+            formatted_cases = []
+            for case in cases:
+                formatted_cases.append({
+                    arg: value
+                    for arg, value in list(zip([arg for arg in sig.parameters if arg != 'self'], case))
+                })
 
-    formated_cases = []
-    for case in cases:
-        formated_cases.append({
-            arg: value
-            for arg, value in list(zip([arg for arg in sig.parameters if arg != 'self'], case))
-        })
+            return formatted_cases
+        case [Dict(), *_]:
+            return cases
+        case _:
+            raise Exception()
 
-    return formated_cases
 
 @overload
-def with_params(description: Text, cases: Iterable[Tuple]) -> Callable:
+def with_params(description: Text, cases: List[Tuple]) -> Callable:
     ...
 @overload
-def with_params(description: Text, cases: Iterable[Dict[Text, Any]]) -> Callable:
+def with_params(description: Text, cases: List[Dict[Text, Any]]) -> Callable:
     ...
 @overload
-def with_params(description: Text, cases: Callable[[], Iterable[Tuple]]) -> Callable:
+def with_params(description: Text, cases: Callable[[], List[Tuple]]) -> Callable:
     ...
 @overload
-def with_params(description: Text, cases: Callable[[], Iterable[Dict[Text, Any]]]) -> Callable:
+def with_params(description: Text, cases: Callable[[], List[Dict[Text, Any]]]) -> Callable:
     ...
 
 def with_params(description, cases) -> Callable:
