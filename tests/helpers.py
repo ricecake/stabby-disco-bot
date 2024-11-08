@@ -29,7 +29,7 @@ def expand_test_cases(cases: CaseType, f) -> Sequence[Dict[Text, Any]]:
         case collections.abc.Callable():
             gen_cases = cases()
             return expand_test_cases(gen_cases)  # type: ignore
-        case [Tuple(), *_]:
+        case [tuple(), *_]:
             sig = signature(f)
 
             formatted_cases = []
