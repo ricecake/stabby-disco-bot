@@ -40,7 +40,7 @@ def expand_test_cases(cases: CaseType, f) -> Sequence[Dict[Text, Any]]:
                 })
 
             return formatted_cases
-        case [Dict(), *_]:
+        case [dict(), *_]:
             return cases
         case _:
             raise Exception()
@@ -67,6 +67,6 @@ def with_params(description, cases) -> Callable:
         def wrapper(self: unittest.TestCase, *args, **kwargs):
             for case in params:
                 with self.subTest(description, **case):
-                    return f(self, *args, **{**case, **kwargs})
+                    f(self, *args, **{**case, **kwargs})
         return wrapper
     return decorator

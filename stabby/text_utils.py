@@ -8,11 +8,12 @@ import stabby.grammar
 
 def prompt_to_overlay(prompt):
 
-    prompt = re.sub(r':\s*[+-]?\d+(?:\.\d*)?\s*(?=[\)\]])', '', prompt)  # handle attention modifiers
-    prompt = re.sub(r'[ ]+', ' ', prompt)
+    prompt = re.sub(r'[ ]+', ' ', prompt)  # collapse whitespace
+    for c in ':|':
+        prompt = prompt.replace(c, '/')
 
-    for c in '[]()':
-        prompt = prompt.replace(c, '')
+    prompt = re.sub(r'(?:[\(\[]\s*)|(?:(?:\s*/\s*)(?:[+-]?\d*(?:\.\d*)?)\s*[\)\]])|(?:[\)\]])', '', prompt)
+    prompt = re.sub(r'\s*/\s*', '/', prompt)
 
     parts = prompt.split(',', 1)
     title = " ".join(parts[0].split())
