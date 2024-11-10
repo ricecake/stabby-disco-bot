@@ -146,6 +146,7 @@ class ImageActions(discord.ui.View):
         regen_params['seed'] = -1
         await generation_interaction(
             interaction,
+            command_name='Again! Again!',
             **regen_params
         )
 
@@ -162,6 +163,7 @@ class ImageActions(discord.ui.View):
         regen_params['steps'] = min(2 * regen_params['steps'], config.max_steps)
         await generation_interaction(
             interaction,
+            command_name='Enhance!',
             **regen_params
         )
 
@@ -197,6 +199,7 @@ async def generation_interaction(
     seed: Optional[int] = None,
     cfg_scale: Optional[float] = None,
     steps: Optional[int] = None,
+    command_name: Optional[str] = 'Magic!',
 ) -> None:
     assert interaction.guild is not None
 
@@ -267,7 +270,7 @@ async def generation_interaction(
             await interaction.followup.send(stabby.text_utils.prettify_params(reprompt_struct), ephemeral=True)
 
             message = await interaction.followup.send(
-                content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name if interaction.command else 'Magic!'),
+                content='`{}` for {} via {}'.format(prompt, interaction.user.display_name, interaction.command.name if interaction.command else command_name),
                 file=file,
                 wait=True,
                 silent=True,
@@ -449,6 +452,7 @@ async def bezos(interaction: discord.Interaction):
         interaction,
         prompt="Jeff bezos on fire, falling into the sun, space flight, giant catapult,  fear, man engulfed in flames",
         negative_prompt="happy, excited, joy, cool, stoic, strong",
+        command_name='Bezos',
         overlay=False
     )
 
@@ -459,7 +463,7 @@ async def karma_wheel(interaction: discord.Interaction):
     """Spin the wheel, see what they get"""
     prompt = karma_grammar.generate()
 
-    await generation_interaction(interaction, prompt=prompt)
+    await generation_interaction(interaction, prompt=prompt, command_name='Karma wheel')
 
 
 def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation, same_user: bool = False, limit: int = 25) -> discord.app_commands.commands.AutocompleteCallback:
@@ -535,6 +539,7 @@ async def generate(
         spoiler=spoiler,
         tiling=tiling,
         restore_faces=restore_faces,
+        command_name='Generate',
     )
 
 
@@ -734,7 +739,7 @@ async def ai_message_content(interaction: discord.Interaction, message: discord.
     # if no text, then generate a random nice string
     # do same for promptificate
 
-    await generation_interaction(interaction, prompt=prompt, negative_prompt=negative)
+    await generation_interaction(interaction, prompt=prompt, negative_prompt=negative, command_name='AI-ify this bad boy!',)
 
 
 def only_self_messages(f: Callable):
@@ -768,6 +773,7 @@ async def regen_with_new_seed(interaction: discord.Interaction, message: discord
     regen_params['seed'] = -1
     await generation_interaction(
         interaction,
+        command_name='Again! Again!',
         **regen_params
     )
 
@@ -795,6 +801,7 @@ async def regen_with_more_steps(interaction: discord.Interaction, message: disco
     regen_params['steps'] = min(2 * regen_params['steps'], config.max_steps)
     await generation_interaction(
         interaction,
+        command_name='Enhance!',
         **regen_params
     )
 
@@ -902,6 +909,7 @@ class Tweak(discord.ui.Modal):
 
         await generation_interaction(
             interaction,
+            command_name='Promptification!',
             **params
         )
 
