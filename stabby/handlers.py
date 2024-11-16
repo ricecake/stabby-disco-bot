@@ -1,7 +1,7 @@
 import io
 import logging
-import math
 import re
+
 from typing import Any, cast
 from datetime import datetime, timezone
 
@@ -9,11 +9,13 @@ from quart import Quart, request, send_file
 from quart.json.provider import DefaultJSONProvider
 
 import stabby
+
 from stabby import grammar
 from stabby import conf
 from stabby import text_utils
 from stabby.schema import StabbyTable
 from stabby.generation import generate_ai_image
+from stabby.image import get_closest_dimensions
 
 config = conf.load_conf()
 
@@ -82,51 +84,6 @@ def make_random_prompt(args: dict) -> str:
     prompt_text = re.sub(r'[ ]+', ' ', prompt_text)
 
     return prompt_text
-
-
-RATIOS = [
-    (1024, 1024),
-    (1024, 960),
-    (1088, 896),
-    (1088, 960),
-    (1152, 832),
-    (1152, 896),
-    (1216, 832),
-    (1280, 768),
-    (1344, 704),
-    (1344, 768),
-    (1408, 704),
-    (1472, 704),
-    (1536, 640),
-    (1600, 640),
-    (1664, 576),
-    (704, 1344),
-    (704, 1408),
-    (768, 1280),
-    (768, 1344),
-    (832, 1152),
-    (832, 1216),
-    (896, 1088),
-    (896, 1152),
-    (960, 1024),
-    (960, 1088),
-]
-
-ASPECTS = sorted([
-    (math.atan(h / w), (w, h))
-    for w, h in RATIOS + [(h, w) for w, h in RATIOS]
-])
-
-def get_closest_dimensions(width: int, height: int) -> tuple[int, int]:
-    aspect = math.atan(height / width)
-    diffs = [
-        (abs(aspect - other), dim)
-        for other, dim in ASPECTS
-    ]
-
-    _, closest = min(diffs, key=lambda i: i[0])
-
-    return closest
 
 @app.get("/api/generate")
 async def generate_image():

@@ -53,9 +53,8 @@ async def generate_ai_image(
         suppress_description: bool = False,
         resize_dimensions: Optional[tuple[int, int]] = None,
         palette: Optional[str] = None,
+        input_image: Optional[Image.Image] = None,
 ) -> tuple[File, dict[str, Any]]:
-    url = config.sd_host
-
     payload = {
         "prompt": prompt,
         "negative_prompt": negative_prompt,
@@ -81,11 +80,22 @@ async def generate_ai_image(
 
     logger.info("Generating: {}".format(prettify_params(payload)))
 
-    async with http_client.post(url=f'{url}/sdapi/v1/txt2img', json=filtered_payload) as response:
-        if not response.ok:
-            raise Exception()
+    endpoint = 'txt2img'
+    url = config.sd_host
 
+    if input_image:
+        endpoint = 'img2img'
+        filtered_payload['init_images'] = [image.b64_img(input_image)]
+        filtered_payload['resize_mode'] = 0
+
+    async with http_client.post(url=f'{url}/sdapi/v1/{endpoint}', json=filtered_payload) as response:
         r = await response.json()
+
+        if not response.ok:
+            logger.error(filtered_payload)
+            logger.error(r)
+            logger.error(response)
+            raise Exception()
 
         if not (r and r.get("images")):
             raise Exception()
@@ -111,6 +121,9 @@ async def generate_ai_image(
                 "sampler_index",
             ]
         }
+
+        del filtered_payload['init_images']
+
         reprompt_struct = filtered_payload
         reprompt_struct.update(filtered_gen_info)
         logger.info("Generated: {}".format(prettify_params(reprompt_struct)))

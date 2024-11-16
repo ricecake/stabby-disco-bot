@@ -5,12 +5,14 @@ from typing import Any, Awaitable, Callable, Literal, Optional, List, cast, Type
 import logging
 import io
 import discord
+from PIL import Image
 from discord import Emoji, File, Message, PartialEmoji, app_commands
 from discord.ext import tasks
 from functools import wraps
 
 from stabby import conf, generation, grammar, schema
 from stabby import text_utils
+from stabby import image
 from stabby.schema import Style, db_session, Preferences, Generation, ServerPreferences
 from sqlalchemy import ColumnElement, func, select
 
@@ -200,6 +202,7 @@ async def generation_interaction(
     cfg_scale: Optional[float] = None,
     steps: Optional[int] = None,
     command_name: Optional[str] = 'Magic!',
+    input_image: Optional[Image.Image] = None,
 ) -> None:
     assert interaction.guild is not None
 
@@ -247,6 +250,13 @@ async def generation_interaction(
                 await interaction_must_reply(interaction, "Generation is offline right now. I've saved `{}` for later.".format(display), silent=True)
                 return
 
+            resize_dimensions = None
+            if input_image and not (width and height):
+                resize_width = input_image.width
+                resize_height = input_image.height
+                (width, height) = image.get_closest_dimensions(width=resize_width, height=resize_height)
+                resize_dimensions = (resize_width, resize_height)
+
             params = dict(
                 prompt=prompt,
                 negative_prompt=negative_prompt,
@@ -260,6 +270,8 @@ async def generation_interaction(
                 cfg_scale=cfg_scale,
                 steps=steps,
                 use_refiner=use_refiner,
+                input_image=input_image,
+                resize_dimensions=resize_dimensions,
             )
             new_params = apply_defaults(interaction, params)
 
@@ -735,11 +747,20 @@ async def create_style(
 async def ai_message_content(interaction: discord.Interaction, message: discord.Message):
     prompt = message.clean_content
     negative = "boring, dull, NSFW, porn, nudity"
-    # Something to find if there's an image, and then do some form of img2img
-    # if no text, then generate a random nice string
-    # do same for promptificate
 
-    await generation_interaction(interaction, prompt=prompt, negative_prompt=negative, command_name='AI-ify this bad boy!',)
+    if message.reference and message.reference.resolved:
+        resolved_message = message.reference.resolved
+        if isinstance(resolved_message, Message) and resolved_message.attachments:
+            message = resolved_message
+
+    file = next(iter(message.attachments), None)
+    if file:
+        image_bytes = io.BytesIO()
+        await file.save(image_bytes)
+
+        file = Image.open(image_bytes)
+
+    await generation_interaction(interaction, prompt=prompt, negative_prompt=negative, input_image=file, command_name='AI-ify this bad boy!',)
 
 
 def only_self_messages(f: Callable):

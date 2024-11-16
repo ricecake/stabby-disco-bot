@@ -1,6 +1,13 @@
+import itertools
+import math
+import io
+import base64
+
 from typing import Optional
-from PIL import ImageFont, Image
+from PIL import Image
 from PIL import ImageDraw
+from PIL import ImageFont
+from PIL import PngImagePlugin
 
 from stabby import conf
 config = conf.load_conf()
@@ -112,3 +119,65 @@ def max_area(area_list):
         d = max(d, dt)
     tup = (a, b, c, d)
     return tup
+
+
+ASPECT_RATIOS = sorted(itertools.chain.from_iterable([
+    ((math.atan(h / w), (w, h)), (math.atan(w / h), (h, w)))
+    for w, h in [
+        (1024, 1024),
+        (1024, 960),
+        (1088, 896),
+        (1088, 960),
+        (1152, 832),
+        (1152, 896),
+        (1216, 832),
+        (1280, 768),
+        (1344, 704),
+        (1344, 768),
+        (1408, 704),
+        (1472, 704),
+        (1536, 640),
+        (1600, 640),
+        (1664, 576),
+        (704, 1344),
+        (704, 1408),
+        (768, 1280),
+        (768, 1344),
+        (832, 1152),
+        (832, 1216),
+        (896, 1088),
+        (896, 1152),
+        (960, 1024),
+        (960, 1088),
+    ]
+]))
+
+def get_closest_dimensions(width: int, height: int) -> tuple[int, int]:
+    aspect = math.atan(height / width)
+    diffs = [
+        (abs(aspect - other), dim)
+        for other, dim in ASPECT_RATIOS
+    ]
+
+    _, closest = min(diffs, key=lambda i: i[0])
+
+    return closest
+
+
+def b64_img(image: Image.Image) -> str:
+    return "data:image/png;base64," + raw_b64_img(image)
+
+
+def raw_b64_img(image: Image.Image) -> str:
+    with io.BytesIO() as output_bytes:
+        metadata = None
+        for key, value in image.info.items():
+            if isinstance(key, str) and isinstance(value, str):
+                if metadata is None:
+                    metadata = PngImagePlugin.PngInfo()
+                metadata.add_text(key, value)
+        image.save(output_bytes, format="PNG", pnginfo=metadata)
+
+        bytes_data = output_bytes.getvalue()
+
+    return str(base64.b64encode(bytes_data), "utf-8")
