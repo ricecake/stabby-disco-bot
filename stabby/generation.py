@@ -122,7 +122,8 @@ async def generate_ai_image(
             ]
         }
 
-        filtered_payload.pop('init_images', None)
+        if input_image:
+            filtered_payload['init_images'] = input_image.info.get('message_id', None)
 
         reprompt_struct = filtered_payload
         reprompt_struct.update(filtered_gen_info)

@@ -152,9 +152,13 @@ class ImageActions(discord.ui.View):
             **regen_params
         )
 
-    @image_action_button(label="Edit", emoji="✏️")
+    @image_action_button(label="Edit Prompt", emoji="✏️")
     async def edit_button(self, interaction: discord.Interaction, message: Message, regen_params: dict[Any, Any]):
-        await interaction.response.send_modal(Tweak(interaction, message, 'Promptificate'))
+        await interaction.response.send_modal(Tweak(interaction, message, 'Promptificate', suppress_image_input=True))
+
+    @image_action_button(label="Iterate on Output", emoji="🔨")
+    async def iterate_button(self, interaction: discord.Interaction, message: Message, regen_params: dict[Any, Any]):
+        await interaction.response.send_modal(Tweak(interaction, message, 'Iterate', suppress_image_input=False))
 
     @image_action_button(label="Enhance", emoji="🔎")
     async def enhance(self, interaction: discord.Interaction, message: Message, regen_params: dict[Any, Any]):
@@ -251,7 +255,7 @@ async def generation_interaction(
                 return
 
             resize_dimensions = None
-            if input_image and not (width and height):
+            if input_image:
                 resize_width = input_image.width
                 resize_height = input_image.height
                 (width, height) = image.get_closest_dimensions(width=resize_width, height=resize_height)
@@ -759,6 +763,7 @@ async def ai_message_content(interaction: discord.Interaction, message: discord.
         await file.save(image_bytes)
 
         file = Image.open(image_bytes)
+        file.info['message_id'] = message.id
 
     await generation_interaction(interaction, prompt=prompt, negative_prompt=negative, input_image=file, command_name='AI-ify this bad boy!',)
 
@@ -888,6 +893,7 @@ class Tweak(discord.ui.Modal):
             interaction: discord.Interaction,
             message: discord.Message,
             title: str,
+            suppress_image_input: bool = False,
     ) -> None:
         super().__init__(
             title=title,
@@ -913,6 +919,7 @@ class Tweak(discord.ui.Modal):
 
         self.message_id = message_id
         self.params = params
+        self.file = next(iter(message.attachments), None) if not suppress_image_input else None
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
@@ -928,9 +935,18 @@ class Tweak(discord.ui.Modal):
 
         params = apply_default_params(params, self.params)
 
+        file = None
+        if self.file:
+            image_bytes = io.BytesIO()
+            await self.file.save(image_bytes)
+
+            file = Image.open(image_bytes)
+            file.info['message_id'] = self.message_id
+
         await generation_interaction(
             interaction,
             command_name='Promptification!',
+            input_image=file,
             **params
         )
 
