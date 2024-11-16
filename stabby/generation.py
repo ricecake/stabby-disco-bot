@@ -122,7 +122,7 @@ async def generate_ai_image(
             ]
         }
 
-        del filtered_payload['init_images']
+        filtered_payload.pop('init_images', None)
 
         reprompt_struct = filtered_payload
         reprompt_struct.update(filtered_gen_info)
