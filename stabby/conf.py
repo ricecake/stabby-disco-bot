@@ -1,4 +1,7 @@
-from typing import Optional
+from abc import ABCMeta, abstractmethod
+from enum import Enum
+from typing import Annotated, Literal, Optional, Union
+import urllib.parse
 import yaml
 import pydantic
 
@@ -18,6 +21,40 @@ class GlobalDefaults(pydantic.BaseModel):
     cfg_scale: float = 7.0
     steps: int = 20
 
+class DatabaseEngine(str, Enum):
+    sqlite = 'sqlite'
+    postgres = 'psql'
+
+class CommonDatabaseSettings(pydantic.BaseModel, metaclass=ABCMeta):
+    debug: bool = False
+
+    @abstractmethod
+    def connection_url(self) -> str:
+        pass
+
+class PostgresSettings(CommonDatabaseSettings):
+    engine: Literal[DatabaseEngine.postgres] = DatabaseEngine.postgres
+    host: str = '127.0.0.1'
+    port: int = 5432
+    database: str = 'stabby_disco'
+    user: Optional[str] = None
+    password: str
+
+    def connection_url(self) -> str:
+        return f'postgresql+psycopg://{self.user}:{urllib.parse.quote_plus(self.password)}@{self.host}:{self.port}/{self.database}'
+
+class SqliteSettings(CommonDatabaseSettings):
+    engine: Literal[DatabaseEngine.sqlite] = DatabaseEngine.sqlite
+    filename: str = 'stabby-disco.db'
+
+    def connection_url(self) -> str:
+        return f'sqlite:///{self.filename}'
+
+
+DatabaseSettings = Annotated[Union[
+    Annotated[PostgresSettings, pydantic.Tag(DatabaseEngine.postgres)],
+    Annotated[SqliteSettings, pydantic.Tag(DatabaseEngine.sqlite)],
+], pydantic.Field(discriminator='engine')]
 
 class Conf(pydantic.BaseModel):
     invite_url: str
@@ -35,6 +72,7 @@ class Conf(pydantic.BaseModel):
     ratelimit_window: float = pydantic.Field(default=20.0)
     max_steps: int = pydantic.Field(default=50)
     global_defaults: GlobalDefaults
+    db: DatabaseSettings
 
 
 def load_conf() -> Conf:

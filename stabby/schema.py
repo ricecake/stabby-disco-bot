@@ -19,7 +19,9 @@ from stabby import conf, text_utils
 config = conf.load_conf()
 logger = logging.getLogger('discord.stabby.schema')
 
-engine = create_engine('sqlite:///stabby-disco.db', echo=False)
+dbconf = config.db
+
+engine = create_engine(dbconf.connection_url(), echo=dbconf.debug)
 db_session = scoped_session(sessionmaker(autocommit=False,
                                          autoflush=True,
                                          expire_on_commit=False,
@@ -36,9 +38,9 @@ class StabbyTable(DeclarativeBase, MappedAsDataclass, repr=False):
         return first + "".join("_" + c.lower() if c.isupper() else c for c in name[1:])
 
     id: Mapped[int] = mapped_column(
-        init=False, primary_key=True, autoincrement=True, repr=False)
+        init=False, primary_key=True, autoincrement=True, repr=False, sort_order=-1)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=None, repr=False
+        DateTime(timezone=True), server_default=func.now(), default=None, repr=False, sort_order=-1
     )
 
     @classmethod

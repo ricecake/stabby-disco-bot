@@ -6,3 +6,4 @@ aiohttp[speedups]
 pydantic
 sqlalchemy
 quart
+psycopg[binary]
