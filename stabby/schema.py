@@ -5,7 +5,7 @@ import enum
 import logging
 from datetime import datetime
 from typing import Optional, TypeVar
-from sqlalchemy import UniqueConstraint, func
+from sqlalchemy import BigInteger, UniqueConstraint, func
 from sqlalchemy import DateTime
 from sqlalchemy import create_engine
 from sqlalchemy import select
@@ -75,7 +75,7 @@ def init_db():
 
 class Preferences(StabbyTable):
     user_id: Mapped[int] = mapped_column(
-        nullable=False, default=None, unique=True, repr=False)
+        nullable=False, default=None, unique=True, repr=False, type_=BigInteger)
 
     negative_prompt: NullMapped[str] = mapped_column(default=None, nullable=True)
     overlay: NullMapped[bool] = mapped_column(default=None, nullable=True)
@@ -107,7 +107,7 @@ class Preferences(StabbyTable):
 
 class ServerPreferences(StabbyTable):
     server_id: Mapped[int] = mapped_column(
-        nullable=False, default=None, unique=True, repr=False)
+        nullable=False, default=None, unique=True, repr=False, type_=BigInteger)
 
     default_negative_prompt: NullMapped[str] = mapped_column(
         default=None, nullable=True)
@@ -135,8 +135,8 @@ class ServerPreferences(StabbyTable):
 
 
 class Generation(StabbyTable):
-    user_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False)
-    message_id: Mapped[int] = mapped_column(nullable=True, default=None, repr=False)
+    user_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False, type_=BigInteger)
+    message_id: Mapped[int] = mapped_column(nullable=True, default=None, repr=False, type_=BigInteger)
 
     prompt: Mapped[str] = mapped_column(nullable=False, default=None)
     negative_prompt: NullMapped[str] = mapped_column(nullable=True, default=None)
@@ -149,7 +149,7 @@ class Generation(StabbyTable):
     height: NullMapped[int] = mapped_column(nullable=True, default=None)
     cfg_scale: NullMapped[float] = mapped_column(nullable=True, default=None)
     steps: NullMapped[int] = mapped_column(nullable=True, default=None)
-    seed: NullMapped[int] = mapped_column(nullable=True, default=None)
+    seed: NullMapped[int] = mapped_column(nullable=True, default=None, type_=BigInteger)
 
     def regen_params(self):
         fields = self.as_dict()
@@ -159,7 +159,7 @@ class Generation(StabbyTable):
 
 
 class Style(StabbyTable):
-    user_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False)
+    user_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False, type_=BigInteger)
 
     name: Mapped[str] = mapped_column(nullable=False, default=None)
     prompt: NullMapped[str] = mapped_column(nullable=True, default=None)
@@ -179,7 +179,7 @@ ServerStatus = enum.Enum('ServerStatus', [
 
 
 class GenerationServer(StabbyTable):
-    owner_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False)
+    owner_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False, type_=BigInteger)
 
     token: Mapped[str] = mapped_column(nullable=False, default=None, repr=False)
     status: Mapped[ServerStatus] = mapped_column(nullable=False, default=None)

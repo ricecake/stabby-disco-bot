@@ -214,7 +214,10 @@ async def generation_interaction(
         await interaction.response.defer(ephemeral=True)
     try:
         with db_session() as session:
-            saved_style = session.scalar(select(Style).where(Style.user_id == interaction.user.id).where(Style.name == style))
+            saved_style = None
+            if style is not None:
+                saved_style = session.scalar(select(Style).where(Style.user_id == interaction.user.id).where(Style.name == style))
+
             if saved_style:
                 if saved_style.prompt:
                     prompt = cast(str, union_prompts(prompt, saved_style.prompt))
@@ -487,6 +490,7 @@ def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation,
         column: ColumnElement = getattr(table, field)
         created_at: ColumnElement = getattr(table, 'created_at')
         with db_session() as session:
+            logger.info('here!')
             query = (select(column)
                      .where(column.is_not(None))
                      .where(column != '')
@@ -510,8 +514,10 @@ def make_autocompleter(field: str, table: Type[schema.StabbyTable] = Generation,
                 query = query.where(clause)
 
             results = []
+            logger.info(query)
             for (value,) in list(session.execute(query)):
                 (name, after_value) = table.autocomplete_formatter(field=field, value=value)
+                logger.info(value)
                 results.append(app_commands.Choice(name=name, value=after_value))
 
             return results
