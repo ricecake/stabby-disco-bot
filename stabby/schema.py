@@ -133,6 +133,11 @@ class ServerPreferences(StabbyTable):
             }
         return {}
 
+class GenerationMode(enum.Enum):
+    GENERATED = 1
+    UNGENERATED = 2
+    ALL = 3
+
 
 class Generation(StabbyTable):
     user_id: Mapped[int] = mapped_column(nullable=False, default=None, repr=False, type_=BigInteger)
@@ -156,6 +161,45 @@ class Generation(StabbyTable):
         return {
             field: value for field, value in fields.items() if field is not None and field in self.display_fields()
         }
+
+    @classmethod
+    def recent_generations(
+        cls,
+        generation_mode: GenerationMode = GenerationMode.ALL,
+        result_limit: int = 5,
+    ) -> list[Generation]:
+        with db_session() as session:
+            filter_query = (
+                select(Generation.id, func.rank().over(
+                    order_by=[Generation.message_id, Generation.created_at.desc()],
+                    partition_by=(
+                        Generation.prompt,
+                        # Generation.negative_prompt,
+                        # Generation.width,
+                        # Generation.height,
+                        # Generation.tiling,
+                        # Generation.restore_faces,
+                        # Generation.cfg_scale,
+                        # Generation.use_refiner,
+                    )
+                ).label("rank"))
+            )
+
+            subq = filter_query.subquery()
+            query = (
+                select(Generation)
+                .join(subq, (subq.c.id == Generation.id) & (subq.c.rank == 1))
+                .order_by(Generation.created_at.desc())
+                .limit(min(25, result_limit))
+            )
+
+            match generation_mode:
+                case GenerationMode.GENERATED:
+                    query = query.where(Generation.message_id.is_not(None))
+                case GenerationMode.UNGENERATED:
+                    query = query.where(Generation.message_id.is_(None))
+
+            return list(session.scalars(query))
 
 
 class Style(StabbyTable):

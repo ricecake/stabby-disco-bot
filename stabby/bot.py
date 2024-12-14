@@ -750,6 +750,65 @@ async def create_style(
         session.commit()
     await interaction.followup.send(F"Style saved as: {style}", ephemeral=True)
 
+class RegenerateButton(discord.ui.Button['RegenerateRecent']):
+    def __init__(self, prompt_id: int, index: int):
+        super().__init__(label=f'Regenerate entry {index}')
+        self.prompt_id = prompt_id
+
+    async def callback(self, interaction: discord.Interaction):
+        regen_params = None
+        with db_session() as session:
+            saved_generation = session.scalar(
+                select(Generation).where(Generation.id == self.prompt_id))
+
+            if saved_generation is None:
+                await interaction.followup.send("Unfortunately, that one isn't in my database", ephemeral=True)
+                return
+
+            regen_params = saved_generation.regen_params()
+
+        regen_params['seed'] = -1
+        await generation_interaction(
+            interaction,
+            command_name='Regenerate Recent',
+            **regen_params
+        )
+
+class RegenerateRecent(discord.ui.View):
+    def __init__(self, generations: list[Generation]):
+        super().__init__(timeout=None)
+        for idx, gen in enumerate(generations):
+            self.add_item(RegenerateButton(gen.id, idx))
+        # There should also be next and previous buttons.
+        # They can be done by saying "where id < " id of last generation, or where id >= same.
+        # that way you can page through the results to a degree.
+
+
+@client.tree.command()
+@db_ratelimiter
+async def recent(
+    interaction: discord.Interaction,
+    generation_mode: schema.GenerationMode = schema.GenerationMode.ALL,
+    result_limit: app_commands.Range[int, 1, 25] = 5,
+) -> None:
+    """Return list of recent prompts"""
+    await interaction.response.defer(thinking=True, ephemeral=True)
+
+    generations = Generation.recent_generations(
+        generation_mode=generation_mode,
+        result_limit=result_limit,
+    )
+
+    await interaction.followup.send(embeds=[
+        discord.Embed()
+        .add_field(name='Prompt', value=item.prompt, inline=False)
+        .add_field(name='Negative Prompt', value=item.negative_prompt, inline=False)
+        .add_field(name="Run at", value=item.created_at.strftime("%Y-%m-%d %H:%M"), inline=False)
+        .add_field(name='Width', value=item.width, inline=True)
+        .add_field(name='Height', value=item.height, inline=True)
+        for item in generations
+    ], view=RegenerateRecent(generations))
+
 
 # This context menu command only works on messages
 @client.tree.context_menu(name='AI-ify this bad boy')
@@ -857,7 +916,7 @@ async def censor_generated_image(interaction: discord.Interaction, message: disc
 
     await interaction.followup.send('Sorry about the upset!', ephemeral=True)
 
-
+# TODO Make this have two subclasses, one focused on editing the flat generation, and the other focused on img2img
 class Tweak(discord.ui.Modal):
     prompt = discord.ui.TextInput(
         custom_id='prompt',

@@ -17,6 +17,7 @@
 		"regen",
 		"reprompt",
 		"sessionmaker",
-		"stabby"
+		"stabby",
+		"ungenerated"
 	]
 }
