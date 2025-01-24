@@ -54,6 +54,7 @@ async def generate_ai_image(
         resize_dimensions: Optional[tuple[int, int]] = None,
         palette: Optional[str] = None,
         input_image: Optional[Image.Image] = None,
+        format: Optional[str] = None,
 ) -> tuple[File, dict[str, Any]]:
     payload = {
         "prompt": prompt,
@@ -170,7 +171,7 @@ async def generate_ai_image(
             image.add_text_to_image(working_image, height, width, title, desc)
 
         buf = io.BytesIO()
-        working_image.save(buf, format='PNG')
+        working_image.save(buf, format=format if format else 'PNG')
         buf.seek(0)
 
         base_name = re.sub(r'[^\w\d]+', '-', prompt)
